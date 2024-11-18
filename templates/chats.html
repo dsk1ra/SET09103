@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chats</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <button id="add-contact-btn">Add Contact</button>
+            <div id="contact-list">
+                <!-- Contacts will be dynamically loaded here -->
+            </div>
+        </div>
+        <div class="chat-container">
+            <div id="chat-header">
+                <span id="contact-name">Select a contact to chat</span>
+                <button id="logout-btn">Logout</button>
+            </div>
+            <div id="chat-messages">
+                <!-- Chat messages will be displayed here -->
+            </div>
+            <div id="chat-input">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-contact-popup" class="popup">
+        <h3>Add Contact</h3>
+        <input type="text" id="contact-username" placeholder="Enter username of contact" />
+        <button id="confirm-add-contact-btn">Add Contact</button>
+        <button id="cancel-add-contact-btn">Cancel</button>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const loggedInUserId = "{{ user_uuid }}";
+    </script>    
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+            const addContactBtn = document.getElementById('add-contact-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const sendBtn = document.getElementById('send-btn');
+            const addContactPopup = document.getElementById('add-contact-popup');
+            const confirmAddContactBtn = document.getElementById('confirm-add-contact-btn');
+            const cancelAddContactBtn = document.getElementById('cancel-add-contact-btn');
+            const contactList = document.getElementById('contact-list');
+            const chatMessages = document.getElementById('chat-messages');
+            const messageInput = document.getElementById('message-input');
+            const contactName = document.getElementById('contact-name');
+
+            let activeContactId = null;
+            let activeContactName = null;
+
+            // Show add contact popup
+            addContactBtn.addEventListener("click", () => {
+                addContactPopup.style.display = "block";
+            });
+
+            // Hide add contact popup
+            cancelAddContactBtn.addEventListener("click", () => {
+                addContactPopup.style.display = "none";
+            });
+
+            // Confirm add contact
+            confirmAddContactBtn.addEventListener("click", () => {
+                const contactUsername = document.getElementById('contact-username').value;
+                if (contactUsername) {
+                    fetch('/add_contact', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: contactUsername })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Fetch the updated contact list
+                                fetch('/get_contacts')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            updateContactList(data.contacts);
+                                            addContactPopup.style.display = "none"; // Close the popup
+                                        } else {
+                                            alert("Error loading contacts.");
+                                        }
+                                    })
+                                    .catch(err => console.error("Error fetching contacts:", err));
+                            } else {
+                                alert(data.message);
+                            }
+                        })
+                        .catch(err => console.error("Error adding contact:", err));
+                }
+            });
+
+            // Update contact list
+            function updateContactList(contacts) {
+                contactList.innerHTML = ''; // Clear existing list
+                contacts.forEach(contact => {
+                    const contactItem = document.createElement('div');
+                    contactItem.classList.add('contact-item');
+                    contactItem.innerText = contact.chat_name; // Display the name of the other user
+                    contactItem.addEventListener('click', () => {
+                        loadChat(contact.chat_id, contact.chat_name);
+                    });
+                    contactList.appendChild(contactItem);
+                });
+            }
+
+            // Load chat messages
+            function loadChat(contactId, contactUsername) {
+                activeContactId = contactId;
+                activeContactName = contactUsername;
+
+                contactName.innerText = contactUsername; // Update chat header
+                chatMessages.innerHTML = ''; // Clear existing messages
+
+                // Join the selected chat room
+                socket.emit('join_chat', { chat_id: contactId });
+
+                // Fetch chat messages
+                fetch(`/get_messages/${contactId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            data.messages.forEach(msg => {
+                                displayMessage(msg.content, msg.sender_id === activeContactId ? "other" : "self", msg.timestamp, msg.status);
+                            });
+                        } else {
+                            console.error("Error loading messages:", data.message);
+                        }
+                    })
+                    .catch(err => console.error("Error fetching messages:", err));
+            }
+
+            // Display a single message in the chat
+            function displayMessage(message, senderType, timestamp, status) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', senderType === "self" ? 'self-message' : 'other-message');
+                
+                const timestampDiv = document.createElement('span');
+                timestampDiv.classList.add('timestamp');
+                timestampDiv.innerText = timestamp;
+
+                const statusDiv = document.createElement('span');
+                statusDiv.classList.add('status');
+                statusDiv.innerText = status; // Status of message (e.g., "sent", "read")
+
+                messageDiv.innerHTML = `${message} <div>${timestampDiv.outerHTML} ${statusDiv.outerHTML}</div>`;
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to the latest message
+            }
+
+            // Send message
+            sendBtn.addEventListener("click", () => {
+                const message = messageInput.value.trim();
+                if (message && activeContactId) {
+                    socket.emit('send_message', {
+                        chat_id: activeContactId,
+                        content: message,
+                        sender_id: loggedInUserId, // Use logged-in user's ID
+                        receiver_id: activeContactId
+                    });
+                    displayMessage(message, "self", new Date().toISOString(), "sent"); // Placeholder for timestamp and status
+                    messageInput.value = '';
+                }
+            });
+
+
+            // Receive real-time messages
+            socket.on('receive_message', (data) => {
+                if (data.chat_id === activeContactId) {
+                    displayMessage(data.content, "other", data.timestamp, data.status);
+                }
+            });
+
+            // Logout functionality
+            logoutBtn.addEventListener("click", () => {
+                fetch('/logout')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = '/';
+                        }
+                    })
+                    .catch(err => console.error("Error logging out:", err));
+            });
+
+            // Load contacts on page load
+            fetch('/get_contacts')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateContactList(data.contacts);
+                    } else {
+                        alert("Error loading contacts.");
+                    }
+                })
+                .catch(err => console.error("Error fetching contacts:", err));
+        });
+    </script>
+</body>
+
+</html>
