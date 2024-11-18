@@ -92,7 +92,7 @@ body {
     color: white;
     padding: 12px 20px;
     font-weight: bold;
-    border-radius: 8px 8px 0 0;
+    border-radius: 0 8px 0 0;
 }
 
 #chat-header span {
@@ -147,11 +147,11 @@ body {
     outline: none;
 }
 
-#send-btn {
+#send-btn, #logout-btn{
     background-color: #6e8efb;
     color: white;
     border: none;
-    border-radius: 50%;
+    border-radius: 20%;
     padding: 12px;
     font-size: 1.2em;
     cursor: pointer;

@@ -6,8 +6,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import logging
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = "hello"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'  # Use SQLite for simplicity
+app.config['SECRET_KEY'] = "40628952"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'  # SQLite database URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -40,7 +40,7 @@ class User(db.Model):
     status_message = db.Column(db.String(255), nullable=True)  # New field for user status message
     last_seen = db.Column(db.DateTime, nullable=True)  # New field for tracking last seen
 
-# Chat model (for direct or group chats)
+# Chat model (direct or group)
 class Chat(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user1_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -53,7 +53,7 @@ class Chat(db.Model):
     def get_participants(self):
         return [participant.user for participant in self.participants]
 
-# ChatParticipant model (to support multiple participants in group chats)
+# ChatParticipant model //TODO implement groupchat using this model
 class ChatParticipant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chat_id = db.Column(db.String(36), db.ForeignKey('chat.id'), nullable=False)
@@ -63,7 +63,7 @@ class ChatParticipant(db.Model):
     user = db.relationship('User')
     is_admin = db.Column(db.Boolean, default=False)  # For group chats, who is an admin?
 
-# A new table to store information about blocked users (optional)
+# Blocked users model //TODO blocked users implementation
 class BlockedUser(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     blocker_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -73,7 +73,7 @@ class BlockedUser(db.Model):
     blocker = db.relationship('User', foreign_keys=[blocker_id])
     blocked = db.relationship('User', foreign_keys=[blocked_id])
 
-# For notifications (optional)
+# Notification model //TODO push notifications from browser
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -88,11 +88,11 @@ with app.app_context():
 # Register user function
 def register_user(username, password, email=None):
     if User.query.filter_by(username=username).first():
-        return False  # Username already exists
+        return False  # Check if username already exists
     
     user_uuid = str(uuid.uuid4())  # Generate a new UUID
     hashed_password = generate_password_hash(password)  # Hash the password
-    new_user = User(username=username, uuid=user_uuid, password=hashed_password, email=email)
+    new_user = User(username=username, uuid=user_uuid, password=hashed_password, email=email) # Populate new user with data
     
     db.session.add(new_user)
     db.session.commit()  # Save the new user to the database
@@ -107,7 +107,7 @@ def chats():
     if 'username' in session:
         user_uuid = session.get('uuid')
         return render_template("chats.html", user_uuid=user_uuid)
-    return redirect(url_for('index'))
+    return redirect(url_for('index')) # redirect user to login screen if not logged in
 
 
 @app.route('/register', methods=['POST'])
@@ -131,7 +131,7 @@ def login():
     user = User.query.filter_by(username=username).first()
     if user and check_password_hash(user.password, password):
         session['uuid'] = user.uuid  # Store UUID instead of just username
-        session['username'] = username  # Optional: keep username in session
+        session['username'] = username  # keep username in session
         return jsonify({'success': True, 'redirect': url_for('chats')})
     else:
         return jsonify({'success': False, 'message': 'Invalid username or password.'})
@@ -159,7 +159,7 @@ def add_contact():
     if logged_in_user.username == contact_username:
         return jsonify({'success': False, 'message': 'You cannot add yourself as a contact.'})
 
-    # Fix for grouping conditions in chat existence query
+    # Grouping conditions in chat existence query
     existing_chat = Chat.query.filter(
         ((Chat.user1_id == logged_in_user.id) & (Chat.user2_id == contact_user.id)) |
         ((Chat.user1_id == contact_user.id) & (Chat.user2_id == logged_in_user.id))
@@ -173,7 +173,7 @@ def add_contact():
     db.session.add(new_chat)
     db.session.commit()
 
-    # Add participants to the chat (ChatParticipant table)
+    # Add participants to the chat (ChatParticipant)
     new_participant_1 = ChatParticipant(chat_id=new_chat.id, user_id=logged_in_user.id)
     new_participant_2 = ChatParticipant(chat_id=new_chat.id, user_id=contact_user.id)
     db.session.add(new_participant_1)
@@ -187,15 +187,23 @@ def get_contacts():
     if 'username' not in session:
         return jsonify({'success': False, 'message': 'User not logged in.'})
 
+    #find user by username in database (User)
     logged_in_user = User.query.filter_by(username=session['username']).first()
 
+    #create chat between users
     contacts = Chat.query.join(ChatParticipant).filter(ChatParticipant.user_id == logged_in_user.id).all()
 
+    #init empty list
     contact_details = []
+    
     for chat in contacts:
+        #find other participants
         other_participant = [participant for participant in chat.participants if participant.user_id != logged_in_user.id]
+        
+        #get the other user
         other_user = other_participant[0].user if other_participant else None
         
+        #append contact details
         if other_user:
             contact_details.append({
                 'chat_id': chat.id,
@@ -214,16 +222,18 @@ def get_messages(chat_id):
                 "sender_id": message.sender_id,
                 "content": message.content,
                 "timestamp": message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                "status": message.status,  # Include message status
+                "status": message.status,
                 "read_at": message.read_at.strftime('%Y-%m-%d %H:%M:%S') if message.read_at else None
             }
             for message in messages
         ]
         return jsonify({"success": True, "messages": messages_data})
     except Exception as e:
+        #logging
         app.logger.error(f"Error retrieving messages: {str(e)}")
         return jsonify({"success": False, "message": "Failed to retrieve messages."})
 
+#unuique room assignment
 @socketio.on('connect')
 def handle_connect():
     user_uuid = session.get('uuid')
