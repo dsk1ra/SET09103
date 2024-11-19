@@ -100,7 +100,11 @@ def register_user(username, password, email=None):
 
 @app.route('/')
 def index():
-    return render_template("index.html")  # Login/Register screen
+    return render_template("index.html")  # Login
+
+@app.route('/signup')
+def signup():
+    return render_template("signup.html")  # Sign Up
 
 @app.route('/chats')
 def chats():
