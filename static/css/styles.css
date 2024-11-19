@@ -116,7 +116,7 @@ body {
     word-wrap: break-word;
 }
 
-.my-message {
+.self-message {
     background-color: #6e8efb;
     color: white;
     align-self: flex-end;
