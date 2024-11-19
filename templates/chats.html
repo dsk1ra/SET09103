@@ -37,14 +37,15 @@
         <button id="confirm-add-contact-btn">Add Contact</button>
         <button id="cancel-add-contact-btn">Cancel</button>
     </div>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
         const loggedInUserId = "{{ user_uuid }}";
-    </script>    
+    </script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
 
             const addContactBtn = document.getElementById('add-contact-btn');
             const logoutBtn = document.getElementById('logout-btn');
@@ -72,7 +73,7 @@
 
             // Confirm add contact
             confirmAddContactBtn.addEventListener("click", () => {
-                const contactUsername = document.getElementById('contact-username').value;
+                const contactUsername = document.getElementById('contact-username').value.trim();
                 if (contactUsername) {
                     fetch('/add_contact', {
                         method: 'POST',
@@ -82,18 +83,8 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                // Fetch the updated contact list
-                                fetch('/get_contacts')
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            updateContactList(data.contacts);
-                                            addContactPopup.style.display = "none"; // Close the popup
-                                        } else {
-                                            alert("Error loading contacts.");
-                                        }
-                                    })
-                                    .catch(err => console.error("Error fetching contacts:", err));
+                                fetchContacts(); // Refresh contact list
+                                addContactPopup.style.display = "none"; // Close popup
                             } else {
                                 alert(data.message);
                             }
@@ -103,12 +94,25 @@
             });
 
             // Update contact list
+            function fetchContacts() {
+                fetch('/get_contacts')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateContactList(data.contacts);
+                        } else {
+                            alert("Error loading contacts.");
+                        }
+                    })
+                    .catch(err => console.error("Error fetching contacts:", err));
+            }
+
             function updateContactList(contacts) {
                 contactList.innerHTML = ''; // Clear existing list
                 contacts.forEach(contact => {
                     const contactItem = document.createElement('div');
                     contactItem.classList.add('contact-item');
-                    contactItem.innerText = contact.chat_name; // Display the name of the other user
+                    contactItem.innerText = contact.chat_name; // Display contact's name
                     contactItem.addEventListener('click', () => {
                         loadChat(contact.chat_id, contact.chat_name);
                     });
@@ -127,13 +131,13 @@
                 // Join the selected chat room
                 socket.emit('join_chat', { chat_id: contactId });
 
-                // Fetch chat messages
+                // Fetch previous chat messages
                 fetch(`/get_messages/${contactId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
                             data.messages.forEach(msg => {
-                                displayMessage(msg.content, msg.sender_id === activeContactId ? "other" : "self", msg.timestamp, msg.status);
+                                displayMessage(msg.content, msg.sender_id === "{{ user_uuid }}" ? "self" : "other", msg.timestamp, msg.status);
                             });
                         } else {
                             console.error("Error loading messages:", data.message);
@@ -146,18 +150,18 @@
             function displayMessage(message, senderType, timestamp, status) {
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('message', senderType === "self" ? 'self-message' : 'other-message');
-                
+
                 const timestampDiv = document.createElement('span');
                 timestampDiv.classList.add('timestamp');
                 timestampDiv.innerText = timestamp;
 
                 const statusDiv = document.createElement('span');
                 statusDiv.classList.add('status');
-                statusDiv.innerText = status; // Status of message (e.g., "sent", "read")
+                statusDiv.innerText = status; // e.g., "sent", "read"
 
                 messageDiv.innerHTML = `${message} <div>${timestampDiv.outerHTML} ${statusDiv.outerHTML}</div>`;
                 chatMessages.appendChild(messageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to the latest message
+                chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to the latest message
             }
 
             // Send message
@@ -167,19 +171,26 @@
                     socket.emit('send_message', {
                         chat_id: activeContactId,
                         content: message,
-                        sender_id: loggedInUserId, // Use logged-in user's ID
-                        receiver_id: activeContactId
+                        sender_id: "{{ user_uuid }}",  // Your user ID
+                        receiver_id: activeContactId  // Assuming activeContactId is the ID of the user you are chatting with
                     });
-                    displayMessage(message, "self", new Date().toISOString(), "sent"); // Placeholder for timestamp and status
+
+                    // Display the message immediately (optimistic UI update)
+                    displayMessage(message, "self", new Date().toISOString(), "sent");
                     messageInput.value = '';
                 }
             });
 
-
+            // Receive real-time messages
             // Receive real-time messages
             socket.on('receive_message', (data) => {
                 if (data.chat_id === activeContactId) {
-                    displayMessage(data.content, "other", data.timestamp, data.status);
+                    // Check if the received message is from the active contact
+                    if (data.sender_id !== "{{ user_uuid }}") { // Only display if it's not from the current user
+                        displayMessage(data.content, "other", data.timestamp, data.status);
+                    }
+                } else {
+                    console.log(`New message received in another chat: ${data.chat_id}`);
                 }
             });
 
@@ -196,16 +207,59 @@
             });
 
             // Load contacts on page load
-            fetch('/get_contacts')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateContactList(data.contacts);
-                    } else {
-                        alert("Error loading contacts.");
+            fetchContacts();
+
+        });
+    </script>
+    <script>
+        $(document).ready(function () {
+            const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+
+            // Refresh messages dynamically using AJAX
+            function fetchMessages(chatId) {
+                $.ajax({
+                    url: `/get_messages/${chatId}`,
+                    type: "GET",
+                    success: function (data) {
+                        if (data.success) {
+                            updateMessages(data.messages);
+                        }
+                    },
+                    error: function () {
+                        alert("Failed to fetch messages.");
                     }
-                })
-                .catch(err => console.error("Error fetching contacts:", err));
+                });
+            }
+
+            // Update messages dynamically in the DOM
+            function updateMessages(messages) {
+                const chatMessages = $('#chat-messages');
+                chatMessages.empty(); // Clear current messages
+                messages.forEach(msg => {
+                    const senderType = msg.sender_id === loggedInUserId ? 'self' : 'other';
+                    const messageElement = `
+                        <div class="message ${senderType}-message">
+                            <p>${msg.content}</p>
+                            <span class="timestamp">${msg.timestamp}</span>
+                        </div>`;
+                    chatMessages.append(messageElement);
+                });
+            }
+
+            // Send a new message
+            $('#send-btn').on('click', function () {
+                const messageInput = $('#message-input');
+                const message = messageInput.val().trim();
+                if (message && activeContactId) {
+                    socket.emit('send_message', {
+                        chat_id: activeContactId,
+                        content: message,
+                        sender_id: loggedInUserId
+                    });
+                    messageInput.val(''); // Clear input field
+                }
+            });
+
         });
     </script>
 </body>

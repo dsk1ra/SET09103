@@ -165,6 +165,7 @@ def add_contact():
         ((Chat.user1_id == contact_user.id) & (Chat.user2_id == logged_in_user.id))
     ).first()
 
+
     if existing_chat:
         return jsonify({'success': False, 'message': 'This user is already your contact.'})
 
@@ -212,26 +213,26 @@ def get_contacts():
 
     return jsonify({'success': True, 'contacts': contact_details})
 
-@app.route('/get_messages/<string:chat_id>', methods=['GET'])
+@app.route('/get_messages/<chat_id>', methods=['GET'])
 def get_messages(chat_id):
-    try:
-        messages = Message.query.filter_by(chat_id=chat_id, is_deleted=False).order_by(Message.timestamp).all()
-        messages_data = [
-            {
-                "id": message.id,
-                "sender_id": message.sender_id,
-                "content": message.content,
-                "timestamp": message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                "status": message.status,
-                "read_at": message.read_at.strftime('%Y-%m-%d %H:%M:%S') if message.read_at else None
-            }
-            for message in messages
-        ]
-        return jsonify({"success": True, "messages": messages_data})
-    except Exception as e:
-        #logging
-        app.logger.error(f"Error retrieving messages: {str(e)}")
-        return jsonify({"success": False, "message": "Failed to retrieve messages."})
+    if 'username' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized access.'})
+
+    user_uuid = session.get('uuid')
+    user = User.query.filter_by(uuid=user_uuid).first()
+
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found.'})
+
+    messages = Message.query.filter_by(chat_id=chat_id).order_by(Message.timestamp).all()
+    messages_data = [{
+        'content': message.content,
+        'sender_id': message.sender_id,
+        'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+        'status': message.status
+    } for message in messages]
+
+    return jsonify({'success': True, 'messages': messages_data})
 
 #unuique room assignment
 @socketio.on('connect')
@@ -250,35 +251,39 @@ def handle_disconnect():
 
 @socketio.on('send_message')
 def handle_send_message(data):
-    try:
-        chat_id = data['chat_id']
-        sender_id = data['sender_id']
-        receiver_id = data['receiver_id']
-        content = data['content']
-        
-        new_message = Message(
-            sender_id=sender_id,
-            receiver_id=receiver_id,
-            chat_id=chat_id,
-            content=content
-        )
+    chat_id = data['chat_id']
+    sender_id = data['sender_id']
+    receiver_id = data['receiver_id']  # Get the receiver_id from the data
+    content = data['content']
 
-        db.session.add(new_message)
-        db.session.commit()
+    # Save the message in the database
+    new_message = Message(
+        sender_id=sender_id,
+        receiver_id=receiver_id,  # Set the receiver_id
+        chat_id=chat_id,
+        content=content
+    )
+    db.session.add(new_message)
+    db.session.commit()
 
-        # Emit to the respective chat room
-        emit('receive_message', {
-            'sender_id': sender_id,
-            'receiver_id': receiver_id,
-            'chat_id': chat_id,
-            'content': content,
-            'timestamp': new_message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            'status': new_message.status
-        }, room=chat_id)  # Room per chat_id
-    except Exception as e:
-        app.logger.error(f"Error sending message: {str(e)}")
+    # Emit the message to all users in the chat room (broadcast=True)
+    emit('receive_message', {
+        'sender_id': sender_id,
+        'receiver_id': receiver_id,
+        'chat_id': chat_id,
+        'content': content,
+        'timestamp': new_message.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+        'status': new_message.status
+    }, room=chat_id)
 
 
+@socketio.on('join_chat')
+def handle_join_chat(data):
+    chat_id = data['chat_id']
+    user_uuid = session.get('uuid')
+    if user_uuid:
+        join_room(chat_id)  # Join the chat room based on chat_id
+        emit('user_connected', {'uuid': user_uuid}, room=chat_id)
 
 if __name__ == '__main__':
     app.run(debug=True)
