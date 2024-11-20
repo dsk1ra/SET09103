@@ -111,11 +111,41 @@
                 contactList.innerHTML = ''; // Clear existing list
                 contacts.forEach(contact => {
                     const contactItem = document.createElement('div');
-                    contactItem.classList.add('contact-item');
-                    contactItem.innerText = contact.chat_name; // Display contact's name
+                    contactItem.classList.add('contact-item', 'flex'); // Add "flex" for layout
+
+                    // Add profile picture
+                    const profilePicture = document.createElement('img');
+                    profilePicture.classList.add('profile-picture');
+                    profilePicture.src = contact.profile_picture || 'default-profile.png'; // Default profile picture
+                    profilePicture.alt = 'Profile Picture';
+                    profilePicture.width = 20;
+                    profilePicture.height = 20;
+
+                    // Add chat-info container
+                    const chatInfo = document.createElement('div');
+                    chatInfo.classList.add('chat-info');
+
+                    // Add contact name (h4)
+                    const contactName = document.createElement('h4');
+                    contactName.innerText = contact.chat_name;
+
+                    // Add latest message (h5)
+                    const latestMessage = document.createElement('h5');
+                    latestMessage.innerText = contact.latest_message || 'No messages yet'; // Placeholder if no message
+
+                    // Append elements to chat-info
+                    chatInfo.appendChild(contactName);
+                    chatInfo.appendChild(latestMessage);
+
+                    // Append elements to contact-item
+                    contactItem.appendChild(profilePicture);
+                    contactItem.appendChild(chatInfo);
+
+                    // Add click event to load chat
                     contactItem.addEventListener('click', () => {
                         loadChat(contact.chat_id, contact.chat_name);
                     });
+
                     contactList.appendChild(contactItem);
                 });
             }
