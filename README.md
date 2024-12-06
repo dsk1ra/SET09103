@@ -15,6 +15,7 @@ This is my version of a real-time web messager I built using Flask. It allows us
 - JavaScript
 - jQuery
 - WebSockets (Socket.io)
+- RESTful API
 
 ## Getting Started
 
@@ -45,6 +46,7 @@ This is my version of a real-time web messager I built using Flask. It allows us
 4. Open preferred browser and go to `localhost:5000`
 
 ### Usage
+
 1. **Register a New User**: Enter preferred username and password, then click `Register`"
 2. **Login**: Enter your username and password, then click `Login`
 3. **Create a New Chat**: Click `Add Contact` and enter the username of the user
