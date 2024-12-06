@@ -31,7 +31,7 @@ This is my version of a real-time web messager I built using Flask. It allows us
    ```bash
    git clone https://github.com/dsk1ra/SET09103.git
    cd SET09103
-   
+   ```
 
 2. Install the required dependencies:
 
