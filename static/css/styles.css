@@ -148,7 +148,7 @@ body {
     outline: none;
 }
 
-#send-btn, #logout-btn{
+#send-btn, #logout-btn {
     background-color: #6e8efb;
     color: white;
     border: none;
@@ -212,6 +212,211 @@ body {
     color: red;
     font-size: 0.9em;
     margin-top: 10px;
+}
+.container {
+    position: relative;
+    overflow: hidden; /* Prevent slide menu from overflowing outside */
+    transition: filter 0.3s ease; /* Smooth blur effect */
+}
+/* Blur effect */
+.container.blur {
+    filter: blur(5px); /* Apply blur when slide menu is active */
+}
+/* Sliding Menu */
+.slide-menu {
+    position: absolute; /* Within container */
+    top: 0;
+    left: -250px; /* Hidden off-screen by default */
+    width: 250px;
+    height: 100%;
+    background-color: #333;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    transition: left 0.3s ease; /* Smooth slide effect */
+    z-index: 2; /* Above sidebar */
+}
+
+.sidebar button {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+#toggle-slide-menu {
+    margin-right: 10px; /* Space between the two buttons */
+}
+.sidebar button:hover {
+    background-color: #555;
+}
+
+/* Active state for sliding menu */
+.slide-menu.active {
+    left: 0; /* Slide in from the left side of the container */
+}
+/* Slide Menu Sections */
+.slide-menu-header {
+    text-align: center;
+    padding: 20px;
+    background-color: #444;
+    border-bottom: 1px solid #555;
+}
+#profile-picture {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%; /* Circular profile picture */
+    margin-bottom: 10px;
+}
+#username {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+/* Menu Body Buttons */
+.slide-menu-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px; /* Space between buttons */
+}
+.slide-menu-body button {
+    width: 80%;
+    padding: 12px;
+    background-color: #555;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+.slide-menu-body button:hover {
+    background-color: #6e8efb;
+}
+
+/* Footer Section */
+.slide-menu-footer {
+    text-align: center;
+    padding: 20px;
+    background-color: #444;
+    border-top: 1px solid #555;
+}
+.slide-menu-footer button {
+    width: 80%;
+    padding: 12px;
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+.slide-menu-footer button:hover {
+    background-color: #c9302c;
+}
+
+/* Toggle Button */
+#toggle-slide-menu {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2em;
+    z-index: 2; /* Above the menu */
+}
+.top-sidebar-navigation{
+    display: inline;
+}
+
+/* Active Sliding Menu */
+.slide-menu.active {
+    left: 0; /* Brings the menu into view */
+}
+
+#toggle-slide-menu {
+    margin-right: 10px; /* Space between the two buttons */
+}
+
+.sidebar button:hover {
+    background-color: #555;
+}
+
+/* Active state for sliding menu */
+.slide-menu.active {
+    left: 0; /* Slide in from the left side of the container */
+}
+#menu-overlay {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+    z-index: 1; /* Above the container, below the slide menu */
+}
+
+#menu-overlay.active {
+    display: block; /* Show overlay when slide menu is active */
+}
+
+/* Apply blur to the content inside the container */
+.container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;  /* Makes sure it stays behind the slide menu */
+    filter: blur(5px);  /* Apply blur */
+    pointer-events: none;  /* Prevent the pseudo-element from blocking clicks */
+}
+
+/* Container content (chat and sidebar) should be behind the pseudo-element */
+.container.blur > .content {
+    z-index: 0;
+}
+
+/* Sliding Menu */
+.slide-menu {
+    position: absolute;
+    top: 0;
+    left: -250px; /* Hidden off-screen by default */
+    width: 250px;
+    height: 100%;
+    background-color: #333;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    transition: left 0.3s ease;
+    z-index: 2; /* Ensure it's above the blurred content */
+}
+
+.slide-menu.active {
+    left: 0; /* Slide in from the left side */
+}
+
+.message .timestamp {
+    font-size: 0.8em; /* Smaller font */
+    display: block;   /* Ensure it's on a new line */
+    margin-bottom: 5px; /* Add spacing between time and status */
+}
+.message .status {
+    font-size: 0.7em; /* Optionally, you can make the status smaller as well */
+    display: block;   /* Ensure it's on a new line */
 }
 
 /* Responsive Layout */
