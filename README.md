@@ -38,10 +38,12 @@ This is my version of a real-time web messager I built using Flask. It allows us
   ```bash
   pip install -r requirements.txt
 
+
 3. Start the server:
 
     ```bash
     python -m flask --app ./app.py run
+    
 
 4. Open preferred browser and go to `localhost:5000`
 
