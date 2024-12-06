@@ -35,9 +35,9 @@ This is my version of a real-time web messager I built using Flask. It allows us
 
 2. Install the required dependencies:
 
-  ```bash
-  pip install -r requirements.txt
-  ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. Start the server:
 
