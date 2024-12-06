@@ -9,13 +9,31 @@
 </head>
 
 <body>
+    <!--  <div id="menu-overlay"></div>   -->
     <div class="container">
+        <div class="slide-menu">
+            <div class="slide-menu-header">
+                <img src="profile-picture.jpg" alt="Profile Picture" id="profile-picture">
+                <span id="username">Username</span>
+            </div>
+            <div class="slide-menu-body">
+                <button id="add-contact-slide">Add Contact</button>
+                <button id="create-group-btn">Create Group</button>
+                <button id="settings-btn">Settings</button>
+            </div>
+            <div class="slide-menu-footer">
+                <button id="logout-slide-btn">Log Out</button>
+            </div>
+        </div>
+        <!-- Sidebar Section -->
         <div class="sidebar">
+            <button id="toggle-slide-menu">☰</button>
             <button id="add-contact-btn">Add Contact</button>
             <div id="contact-list">
                 <!-- Contacts will be dynamically loaded here -->
             </div>
         </div>
+        <!-- Chat Section -->
         <div class="chat-container">
             <div id="chat-header">
                 <span id="contact-name">Select a contact to chat</span>
@@ -30,6 +48,7 @@
             </div>
         </div>
     </div>
+
 
     <div id="add-contact-popup" class="popup">
         <h3>Add Contact</h3>
@@ -46,7 +65,6 @@
         document.addEventListener("DOMContentLoaded", () => {
             const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
-
             const addContactBtn = document.getElementById('add-contact-btn');
             const logoutBtn = document.getElementById('logout-btn');
             const sendBtn = document.getElementById('send-btn');
@@ -57,6 +75,12 @@
             const chatMessages = document.getElementById('chat-messages');
             const messageInput = document.getElementById('message-input');
             const contactName = document.getElementById('contact-name');
+
+            // Toggle slide menu functionality
+            const slideMenu = document.querySelector('.slide-menu');
+            const container = document.querySelector('.container');
+            const overlay = document.getElementById('menu-overlay');
+            const toggleButton = document.getElementById('toggle-slide-menu');
 
             let activeContactId = null;
             let activeContactName = null;
@@ -212,7 +236,6 @@
             });
 
             // Receive real-time messages
-            // Receive real-time messages
             socket.on('receive_message', (data) => {
                 if (data.chat_id === activeContactId) {
                     // Check if the received message is from the active contact
@@ -236,6 +259,22 @@
                     .catch(err => console.error("Error logging out:", err));
             });
 
+            // Toggle slide menu
+            toggleButton.addEventListener('click', () => {
+                const isActive = slideMenu.classList.contains('active');
+                slideMenu.classList.toggle('active', !isActive); // Toggle menu
+            });
+
+            /*
+            
+            
+                        // Close slide menu when clicking outside
+                        overlay.addEventListener('click', () => {
+                            slideMenu.classList.remove('active');  // Hide menu
+                            container.classList.remove('blur');   // Remove blur effect
+                            overlay.classList.remove('active');  // Hide overlay
+                        });
+            */
             // Load contacts on page load
             fetchContacts();
 
