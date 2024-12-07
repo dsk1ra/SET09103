@@ -99,7 +99,7 @@
             confirmAddContactBtn.addEventListener("click", () => {
                 const contactUsername = document.getElementById('contact-username').value.trim();
                 if (contactUsername) {
-                    fetch('/add_contact', {
+                    fetch('/api/add_contact', {  // Updated endpoint
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username: contactUsername })
@@ -119,7 +119,7 @@
 
             // Update contact list
             function fetchContacts() {
-                fetch('/get_contacts')
+                fetch('/api/get_contacts')  // Updated endpoint
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -186,7 +186,7 @@
                 socket.emit('join_chat', { chat_id: contactId });
 
                 // Fetch previous chat messages
-                fetch(`/get_messages/${contactId}`)
+                fetch(`/api/get_messages/${contactId}`)  // Updated endpoint
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -249,7 +249,7 @@
 
             // Logout functionality
             logoutBtn.addEventListener("click", () => {
-                fetch('/logout')
+                fetch('/api/logout')  // Updated endpoint
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
@@ -265,21 +265,12 @@
                 slideMenu.classList.toggle('active', !isActive); // Toggle menu
             });
 
-            /*
-            
-            
-                        // Close slide menu when clicking outside
-                        overlay.addEventListener('click', () => {
-                            slideMenu.classList.remove('active');  // Hide menu
-                            container.classList.remove('blur');   // Remove blur effect
-                            overlay.classList.remove('active');  // Hide overlay
-                        });
-            */
             // Load contacts on page load
             fetchContacts();
 
         });
     </script>
+
     <script>
         $(document).ready(function () {
             const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
@@ -287,7 +278,7 @@
             // Refresh messages dynamically using AJAX
             function fetchMessages(chatId) {
                 $.ajax({
-                    url: `/get_messages/${chatId}`,
+                    url: `/api/get_messages/${chatId}`,  // Updated endpoint
                     type: "GET",
                     success: function (data) {
                         if (data.success) {

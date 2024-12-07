@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
     <link rel="stylesheet" href="static/css/login.css">
 </head>
+
 <body>
     <div class="container">
         <h2>Sign Up</h2>
@@ -31,22 +33,23 @@
             const username = document.getElementById('register-username').value;
             const password = document.getElementById('register-password').value;
 
-            fetch('/register', {
+            fetch('/api/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Registration successful! Please log in.");
-                    registerForm.reset();  // Clear the form
-                } else {
-                    document.getElementById('register-error-message').innerText = data.message;
-                }
-            })
-            .catch(error => console.error(error));
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Registration successful! Please log in.");
+                        registerForm.reset();  // Clear the form
+                    } else {
+                        document.getElementById('register-error-message').innerText = data.message;
+                    }
+                })
+                .catch(error => console.error(error));
         });
     </script>
 </body>
+
 </html>
