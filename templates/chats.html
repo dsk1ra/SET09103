@@ -135,12 +135,12 @@
                 contactList.innerHTML = ''; // Clear existing list
                 contacts.forEach(contact => {
                     const contactItem = document.createElement('div');
-                    contactItem.classList.add('contact-item', 'flex'); // Add "flex" for layout
+                    contactItem.classList.add('contact-item', 'flex');
 
                     // Add profile picture
                     const profilePicture = document.createElement('img');
                     profilePicture.classList.add('profile-picture');
-                    profilePicture.src = contact.profile_picture || 'default-profile.png'; // Default profile picture
+                    profilePicture.src = contact.profile_picture || 'default-profile.png';
                     profilePicture.alt = 'Profile Picture';
                     profilePicture.width = 20;
                     profilePicture.height = 20;
@@ -155,7 +155,7 @@
 
                     // Add latest message (h5)
                     const latestMessage = document.createElement('h5');
-                    latestMessage.innerText = contact.latest_message || 'No messages yet'; // Placeholder if no message
+                    latestMessage.innerText = contact.latest_message || 'No messages yet';
 
                     // Append elements to chat-info
                     chatInfo.appendChild(contactName);
@@ -173,6 +173,50 @@
                     contactList.appendChild(contactItem);
                 });
             }
+
+            socket.on('update_contact_list', (data) => {
+                const contactList = document.getElementById('contact-list'); // Adjust to your actual contact list element
+                const contactItems = contactList.getElementsByClassName('contact-item');
+
+                let contactUpdated = false;
+
+                // Check if the chat already exists in the contact list
+                for (let contactItem of contactItems) {
+                    const chatId = contactItem.dataset.chatId; // Assuming you store chat_id in a data attribute
+                    if (chatId === data.chat_id.toString()) {
+                        // Update the latest message
+                        const latestMessage = contactItem.querySelector('h5');
+                        latestMessage.innerText = data.latest_message;
+                        contactUpdated = true;
+
+                        // Optionally, move the updated contact to the top of the list
+                        contactList.prepend(contactItem);
+                        break;
+                    }
+                }
+
+                // If the chat is not in the list, add it (optional, for new chats)
+                if (!contactUpdated) {
+                    const newContactItem = document.createElement('div');
+                    newContactItem.classList.add('contact-item', 'flex');
+                    newContactItem.dataset.chatId = data.chat_id;
+
+                    const chatInfo = `
+            <h4>${data.chat_name}</h4>
+            <h5>${data.latest_message}</h5>
+        `;
+                    newContactItem.innerHTML = chatInfo;
+
+                    contactList.prepend(newContactItem);
+
+                    // Add event listener for loading the chat
+                    newContactItem.addEventListener('click', () => {
+                        loadChat(data.chat_id, data.chat_name);
+                    });
+                }
+            });
+
+
 
             // Load chat messages
             function loadChat(contactId, contactUsername) {
@@ -230,7 +274,7 @@
                     });
 
                     // Display the message immediately (optimistic UI update)
-                    displayMessage(message, "self", new Date().toISOString(), "sent");
+                    displayMessage(message, "self", new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), "sent");
                     messageInput.value = '';
                 }
             });

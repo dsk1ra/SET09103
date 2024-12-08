@@ -16,6 +16,7 @@ with app.app_context():
 
 app.register_blueprint(api, url_prefix='/api')
 
+
 @app.route('/')
 def index():
     return render_template("index.html")
@@ -51,6 +52,7 @@ def handle_send_message(data):
     receiver_id = data['receiver_id']
     content = data['content']
 
+    # Create and save the message
     new_message = Message(
         sender_id=sender_id,
         receiver_id=receiver_id,
@@ -59,17 +61,20 @@ def handle_send_message(data):
     )
     db.session.add(new_message)
     db.session.commit()
-    
-    timestamp_display = new_message.timestamp.strftime('%H:%M')
 
+    # Format the timestamp
+    formatted_timestamp = new_message.timestamp.strftime('%H:%M')
+
+    # Emit the message to the chat room
     emit('receive_message', {
         'sender_id': sender_id,
         'receiver_id': receiver_id,
         'chat_id': chat_id,
         'content': content,
-        'timestamp': timestamp_display,
+        'timestamp': formatted_timestamp,
         'status': new_message.status
     }, room=chat_id)
+
 
 @socketio.on('join_chat')
 def handle_join_chat(data):

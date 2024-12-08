@@ -112,18 +112,34 @@ def get_contacts():
         return jsonify({'success': False, 'message': 'User not logged in.'})
 
     logged_in_user = User.query.filter_by(username=session['username']).first()
+    if not logged_in_user:
+        return jsonify({'success': False, 'message': 'User not found.'})
+
+    # Get all chats the user participates in
     contacts = Chat.query.join(ChatParticipant).filter(ChatParticipant.user_id == logged_in_user.id).all()
 
     contact_details = []
-    
+
     for chat in contacts:
-        other_participant = [participant for participant in chat.participants if participant.user_id != logged_in_user.id]
+        # Find the other participant in the chat
+        other_participant = [
+            participant for participant in chat.participants
+            if participant.user_id != logged_in_user.id
+        ]
         other_user = other_participant[0].user if other_participant else None
-        
+
+        # Get the latest message for this chat
+        latest_message = (
+            Message.query.filter_by(chat_id=chat.id)
+            .order_by(Message.timestamp.desc())
+            .first()
+        )
+
         if other_user:
             contact_details.append({
                 'chat_id': chat.id,
-                'chat_name': other_user.username
+                'chat_name': other_user.username,
+                'latest_message': latest_message.content if latest_message else None
             })
 
     return jsonify({'success': True, 'contacts': contact_details})
