@@ -109,11 +109,11 @@ def add_contact():
 @api.route('/get_contacts', methods=['GET'])
 def get_contacts():
     if 'username' not in session:
-        return jsonify({'success': False, 'message': 'User not logged in.'})
+        return jsonify({'success': False, 'message': 'User  not logged in.'})
 
     logged_in_user = User.query.filter_by(username=session['username']).first()
     if not logged_in_user:
-        return jsonify({'success': False, 'message': 'User not found.'})
+        return jsonify({'success': False, 'message': 'User  not found.'})
 
     # Get all chats the user participates in
     contacts = Chat.query.join(ChatParticipant).filter(ChatParticipant.user_id == logged_in_user.id).all()
@@ -139,7 +139,8 @@ def get_contacts():
             contact_details.append({
                 'chat_id': chat.id,
                 'chat_name': other_user.username,
-                'latest_message': latest_message.content if latest_message else None
+                'latest_message': latest_message.content if latest_message else None,
+                'latest_message_timestamp': latest_message.timestamp.strftime('%H:%M') if latest_message else None  # Add timestamp
             })
 
     return jsonify({'success': True, 'contacts': contact_details})

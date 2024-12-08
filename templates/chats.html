@@ -43,7 +43,7 @@
                 <!-- Chat messages will be displayed here -->
             </div>
             <div id="chat-input">
-                <input type="text" id="message-input" placeholder="Type a message...">
+                <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
                 <button id="send-btn">Send</button>
             </div>
         </div>
@@ -84,6 +84,24 @@
 
             let activeContactId = null;
             let activeContactName = null;
+
+            messageInput.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    if (event.shiftKey) {
+                        // If Shift + Enter is pressed, add a newline
+                        messageInput.value += '\n'; // Add a newline character
+                        event.preventDefault(); // Prevent default action
+                    } else {
+                        // If only Enter is pressed, prevent the default action and trigger send
+                        event.preventDefault(); // Prevent the default form submission
+                        sendBtn.click(); // Trigger the send button click
+                    }
+                }
+            });
+            messageInput.addEventListener('input', function () {
+                this.style.height = 'auto'; // Reset height
+                this.style.height = Math.min(this.scrollHeight, 60) + 'px'; // Set height to scrollHeight, max 120px (3 rows)
+            });
 
             // Show add contact popup
             addContactBtn.addEventListener("click", () => {
@@ -160,11 +178,17 @@
 
                     // Add latest message (h5)
                     const latestMessage = document.createElement('h5');
-                    latestMessage.innerText = contact.latest_message || 'No messages yet';
+                    latestMessage.innerText = truncateMessage(contact.latest_message || 'No messages yet');
+
+                    // Add timestamp (span)
+                    const timestamp = document.createElement('span');
+                    timestamp.classList.add('timestamp'); // Add a class for styling
+                    timestamp.innerText = contact.latest_message_timestamp || ''; // Use the timestamp if available
 
                     // Append elements to chat-info
                     chatInfo.appendChild(contactName);
                     chatInfo.appendChild(latestMessage);
+                    chatInfo.appendChild(timestamp); // Append the timestamp
 
                     // Append elements to contact-item
                     contactItem.appendChild(profilePicture);
@@ -177,7 +201,9 @@
 
                     contactList.appendChild(contactItem);
                 });
-            } function truncateMessage(message) {
+            }
+
+            function truncateMessage(message) {
                 if (message.length > 15) {
                     return message.substring(0, 15) + "..."; // Truncate and add "..."
                 }
