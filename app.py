@@ -75,6 +75,13 @@ def handle_send_message(data):
         'status': new_message.status
     }, room=chat_id)
 
+    # Emit an event to update the contact item for all users
+    emit('update_contact_item', {
+        'chat_id': chat_id,
+        'latest_message': content,
+        'sender_id': sender_id
+    }, broadcast=True)  # Broadcast to all clients
+
 
 @socketio.on('join_chat')
 def handle_join_chat(data):
