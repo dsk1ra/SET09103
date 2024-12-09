@@ -38,16 +38,23 @@ body {
     padding: 20px;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
+.bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
 
 #add-contact-btn {
     background-color: #6e8efb;
     color: white;
-    padding: 12px;
+    /*padding: 12px;*/
     border-radius: 4px;
     cursor: pointer;
     border: none;
-    margin-bottom: 20px;
+    /*margin-bottom: 20px;*/
     transition: background-color 0.3s;
+    width: -webkit-fill-available;
 }
 
 #add-contact-btn:hover {
@@ -276,11 +283,6 @@ body {
     transition: background-color 0.3s;
 }
 
-#toggle-slide-menu {
-    margin-right: 10px;
-    /* Space between the two buttons */
-}
-
 .sidebar button:hover {
     background-color: #555;
 }
@@ -365,10 +367,10 @@ body {
 
 /* Toggle Button */
 #toggle-slide-menu {
-    position: absolute;
+    /*position: absolute;
     top: 15px;
-    left: 15px;
-    background-color: #333;
+    left: 15px;*/
+    background-color: #6e8efb;
     color: white;
     border: none;
     padding: 10px 15px;
