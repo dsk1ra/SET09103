@@ -1,9 +1,14 @@
-from flask import Blueprint, jsonify, request, session, render_template, redirect, url_for
+from flask import Blueprint, jsonify, request, session, render_template, redirect, url_for, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import uuid
 from models import db, Message, User, Chat, ChatParticipant, BlockedUser, Notification
+import base64
+
 
 api = Blueprint('api', __name__, url_prefix='/api/v1')
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 @api.route('/messages/<int:chat_id>', methods=['GET'])
 def get_messages(chat_id):
@@ -174,3 +179,41 @@ def send_message():
         'timestamp': formatted_timestamp,
         'status': new_message.status
     })
+    
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@api.route('/upload_profile_picture', methods=['POST'])
+def upload_profile_picture():
+    if 'username' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in.'})
+
+    if 'profile_picture' not in request.files:
+        return jsonify({'success': False, 'message': 'No file part.'})
+
+    file = request.files['profile_picture']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No selected file.'})
+
+    if file and allowed_file(file.filename):
+        user = User.query.filter_by(username=session['username']).first()
+        user.profile_picture = file.read()  # Store the image data as binary
+        db.session.commit()
+
+        # Return the necessary data for emitting the WebSocket event
+        image_data = base64.b64encode(user.profile_picture).decode('utf-8')
+        return jsonify({'success': True, 'message': 'File successfully uploaded.', 'user_uuid': user.uuid, 'profile_picture': image_data})
+    else:
+        return jsonify({'success': False, 'message': 'File type not allowed.'})
+
+@api.route('/profile_picture', methods=['GET'])
+def get_profile_picture():
+    if 'username' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in.'})
+
+    user = User.query.filter_by(username=session['username']).first()
+    if user and user.profile_picture:
+        image_data = base64.b64encode(user.profile_picture).decode('utf-8')
+        return jsonify({'success': True, 'profile_picture': image_data})
+    else:
+        return jsonify({'success': False, 'message': 'No profile picture found.'})

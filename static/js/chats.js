@@ -321,6 +321,74 @@ document.addEventListener("DOMContentLoaded", () => {
     // Load contacts on page load
     fetchContacts();
 
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const profilePictureForm = document.getElementById('profile-picture-form');
+    const profilePictureInput = document.getElementById('profile-picture-input');
+    const profilePicture = document.getElementById('profile-picture');
+
+    settingsBtn.addEventListener('click', () => {
+        settingsOverlay.style.display = 'flex';
+    });
+
+    closeSettingsBtn.addEventListener('click', () => {
+        settingsOverlay.style.display = 'none';
+    });
+
+    profilePictureForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const file = profilePictureInput.files[0];
+        if (file && file.size <= 1048576) { // 1MB = 1048576 bytes
+            const formData = new FormData();
+            formData.append('profile_picture', file);
+
+            fetch('/api/v1/upload_profile_picture', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Profile picture uploaded successfully!');
+                        profilePicture.src = data.profile_picture_url; // Update the profile picture in the UI
+                        settingsOverlay.style.display = 'none';
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(err => console.error('Error uploading profile picture:', err));
+        } else {
+            alert('File size exceeds 1MB limit.');
+        }
+    });
+
+    socket.on('update_profile_picture', (data) => {
+        const { user_uuid, profile_picture } = data;
+        if (user_uuid === loggedInUserId) {
+            const profilePicture = document.getElementById('profile-picture');
+            profilePicture.src = `data:image/png;base64,${profile_picture}`;
+        }
+    });
+
+    // Fetch and display the profile picture
+    function fetchProfilePicture() {
+        fetch('/api/v1/profile_picture')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const profilePicture = document.getElementById('profile-picture');
+                    profilePicture.src = `data:image/png;base64,${data.profile_picture}`;
+                } else {
+                    console.error('Error fetching profile picture:', data.message);
+                }
+            })
+            .catch(err => console.error('Error fetching profile picture:', err));
+    }
+
+    // Call the function to fetch the profile picture on page load
+    fetchProfilePicture();
+
 });
 
 $(document).ready(function () {

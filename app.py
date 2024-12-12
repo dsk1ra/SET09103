@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from models import db, Message, User, Chat, ChatParticipant, BlockedUser, Notification
-from api import api
+from api import api 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "40628952"
@@ -9,6 +9,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+UPLOAD_FOLDER = 'static/uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 with app.app_context():
     db.create_all()
@@ -45,18 +48,13 @@ def handle_disconnect():
 
 @socketio.on('send_message')
 def handle_send_message(data):
-    chat_id = data['chat_id']
     sender_id = data['sender_id']
     receiver_id = data['receiver_id']
+    chat_id = data['chat_id']
     content = data['content']
 
-    # Create and save the message
-    new_message = Message(
-        sender_id=sender_id,
-        receiver_id=receiver_id,
-        chat_id=chat_id,
-        content=content
-    )
+    # Save the message to the database (example)
+    new_message = Message(sender_id=sender_id, receiver_id=receiver_id, chat_id=chat_id, content=content)
     db.session.add(new_message)
     db.session.commit()
 
@@ -79,6 +77,17 @@ def handle_send_message(data):
         'latest_message': content,
         'sender_id': sender_id
     }, broadcast=True)  # Broadcast to all clients
+    
+@app.route('/upload_profile_picture', methods=['POST'])
+def upload_profile_picture():
+    response = api.upload_profile_picture()
+    data = response.get_json()
+    if data['success']:
+        socketio.emit('update_profile_picture', {
+            'user_uuid': data['user_uuid'],
+            'profile_picture': data['profile_picture']
+        }, broadcast=True)
+    return response
 
 @socketio.on('join_chat')
 def handle_join_chat(data):

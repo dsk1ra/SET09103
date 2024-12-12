@@ -26,7 +26,7 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
-    profile_picture = db.Column(db.String(200), nullable=True)  # New field for user profile picture
+    profile_picture = db.Column(db.LargeBinary, nullable=True)  # Store image data as binary
     status_message = db.Column(db.String(255), nullable=True)  # New field for user status message
     last_seen = db.Column(db.DateTime, nullable=True)  # New field for tracking last seen
 
