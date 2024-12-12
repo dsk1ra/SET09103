@@ -17,7 +17,7 @@
         <div class="slide-menu">
             <div class="slide-menu-header">
                 <img src="profile-picture.jpg" alt="Profile Picture" id="profile-picture">
-                <span id="username">Username</span>
+                <span id="username">{{ username }}</span>
             </div>
             <div class="slide-menu-body">
                 <button id="add-contact-slide">Add Contact</button>
@@ -73,5 +73,9 @@
         </div>
     </div>
 </body>
+<script>
+    const loggedInUserId = "{{ user_uuid }}";
+    const loggedInUsername = "{{ username }}";
+</script>
 
 </html>

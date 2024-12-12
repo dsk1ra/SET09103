@@ -1,4 +1,4 @@
-const loggedInUserId = "{{ user_uuid }}";
+
 
 document.addEventListener("DOMContentLoaded", () => {
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
@@ -19,6 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const container = document.querySelector('.container');
     const overlay = document.getElementById('menu-overlay');
     const toggleButton = document.getElementById('toggle-slide-menu');
+
+
+    const usernameSpan = document.getElementById('username');
+    usernameSpan.innerText = loggedInUsername;
 
     let activeContactId = null;
     let activeContactName = null;

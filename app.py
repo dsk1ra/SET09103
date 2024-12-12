@@ -30,7 +30,9 @@ def signup():
 def chats():
     if 'username' in session:
         user_uuid = session.get('uuid')
-        return render_template("chats.html", user_uuid=user_uuid)
+        user = User.query.filter_by(uuid=user_uuid).first()
+        if user:
+            return render_template("chats.html", user_uuid=user_uuid, username=user.username)
     return redirect(url_for('index'))
 
 @socketio.on('connect')
