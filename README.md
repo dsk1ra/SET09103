@@ -59,3 +59,6 @@ This is my version of a real-time web messager I built using Flask. It allows us
 
 ### License 
 Distributed under the MIT License. See LICENSE.txt for more information.
+
+### Status
+[![Test Flask App](https://github.com/dsk1ra/SET09103/actions/workflows/flask_build_app.yml/badge.svg)](https://github.com/dsk1ra/SET09103/actions/workflows/flask_build_app.yml)
