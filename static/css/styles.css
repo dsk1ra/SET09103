@@ -120,11 +120,10 @@ body {
 .message {
     padding: 10px 15px;
     border-radius: 8px;
-    max-width: 50%;
+    max-width: 10%; /* Changed from 50% to 80% */
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
-
 .self-message {
     background-color: #6e8efb;
     color: white;

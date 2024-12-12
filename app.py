@@ -1,8 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from models import db
-from api import api
 from models import db, Message, User, Chat, ChatParticipant, BlockedUser, Notification
+from api import api
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "40628952"
@@ -14,8 +13,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 with app.app_context():
     db.create_all()
 
-app.register_blueprint(api, url_prefix='/api')
-
+app.register_blueprint(api, url_prefix='/api/v1')
 
 @app.route('/')
 def index():
@@ -81,7 +79,6 @@ def handle_send_message(data):
         'latest_message': content,
         'sender_id': sender_id
     }, broadcast=True)  # Broadcast to all clients
-
 
 @socketio.on('join_chat')
 def handle_join_chat(data):

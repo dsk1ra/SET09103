@@ -3,9 +3,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from models import db, Message, User, Chat, ChatParticipant, BlockedUser, Notification
 
-api = Blueprint('api', __name__)
+api = Blueprint('api', __name__, url_prefix='/api/v1')
 
-@api.route('/get_messages/<chat_id>', methods=['GET'])
+@api.route('/messages/<int:chat_id>', methods=['GET'])
 def get_messages(chat_id):
     if 'username' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized access.'})
@@ -38,7 +38,7 @@ def register_user(username, password, email=None):
     db.session.commit()  # Save the new user to the database
     return True
 
-@api.route('/register', methods=['POST'])
+@api.route('/users', methods=['POST'])
 def register():
     data = request.get_json()
     username = data.get('username')
@@ -49,8 +49,8 @@ def register():
         return jsonify({'success': True, 'username': username})
     else:
         return jsonify({'success': False, 'message': 'Username already exists.'})
-
-@api.route('/login', methods=['POST'])
+    
+@api.route('/sessions', methods=['POST'])
 def login():
     data = request.get_json()
     username = data.get('username')
@@ -64,12 +64,12 @@ def login():
     else:
         return jsonify({'success': False, 'message': 'Invalid username or password.'})
 
-@api.route('/logout')
+@api.route('/sessions', methods=['DELETE'])
 def logout():
     session.pop('username', None)
     return jsonify({'success': True})
 
-@api.route('/add_contact', methods=['POST'])
+@api.route('/contacts', methods=['POST'])
 def add_contact():
     if 'username' not in session:
         return jsonify({'success': False, 'message': 'User not logged in.'})
@@ -106,14 +106,14 @@ def add_contact():
 
     return jsonify({'success': True, 'chat_id': new_chat.id, 'message': 'Contact added successfully.'})
 
-@api.route('/get_contacts', methods=['GET'])
+@api.route('/contacts', methods=['GET'])
 def get_contacts():
     if 'username' not in session:
-        return jsonify({'success': False, 'message': 'User  not logged in.'})
+        return jsonify({'success': False, 'message': 'User not logged in.'})
 
     logged_in_user = User.query.filter_by(username=session['username']).first()
     if not logged_in_user:
-        return jsonify({'success': False, 'message': 'User  not found.'})
+        return jsonify({'success': False, 'message': 'User not found.'})
 
     # Get all chats the user participates in
     contacts = Chat.query.join(ChatParticipant).filter(ChatParticipant.user_id == logged_in_user.id).all()
@@ -144,3 +144,33 @@ def get_contacts():
             })
 
     return jsonify({'success': True, 'contacts': contact_details})
+
+@api.route('/messages', methods=['POST'])
+def send_message():
+    data = request.get_json()
+    chat_id = data['chat_id']
+    sender_id = data['sender_id']
+    receiver_id = data['receiver_id']
+    content = data['content']
+
+    # Create and save the message
+    new_message = Message(
+        sender_id=sender_id,
+        receiver_id=receiver_id,
+        chat_id=chat_id,
+        content=content
+    )
+    db.session.add(new_message)
+    db.session.commit()
+
+    # Format the timestamp
+    formatted_timestamp = new_message.timestamp.strftime('%H:%M')
+
+    return jsonify({
+        'sender_id': sender_id,
+        'receiver_id': receiver_id,
+        'chat_id': chat_id,
+        'content': content,
+        'timestamp': formatted_timestamp,
+        'status': new_message.status
+    })
