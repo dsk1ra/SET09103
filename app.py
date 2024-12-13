@@ -32,7 +32,8 @@ def chats():
         user_uuid = session.get('uuid')
         user = User.query.filter_by(uuid=user_uuid).first()
         if user:
-            return render_template("chats.html", user_uuid=user_uuid, username=user.username, name=user.name, surname=user.surname)
+            chats = Chat.query.join(ChatParticipant).filter(ChatParticipant.user_id == user.id).all()
+            return render_template("chats.html", user_uuid=user_uuid, username=user.username, name=user.name, surname=user.surname, chats=chats)
     return redirect(url_for('index'))
 
 @socketio.on('connect')
@@ -51,11 +52,17 @@ def handle_disconnect():
 @socketio.on('send_message')
 def handle_send_message(data):
     sender_id = data['sender_id']
-    receiver_id = data['receiver_id']
     chat_id = data['chat_id']
     content = data['content']
 
-    # Save the message to the database (example)
+    # Determine if the chat is a group chat
+    chat = db.session.get(Chat, chat_id)
+    if chat.type == 'group':
+        receiver_id = None  # No specific receiver for group messages
+    else:
+        receiver_id = data.get('receiver_id')
+
+    # Save the message to the database
     new_message = Message(sender_id=sender_id, receiver_id=receiver_id, chat_id=chat_id, content=content)
     db.session.add(new_message)
     db.session.commit()
@@ -70,7 +77,8 @@ def handle_send_message(data):
         'chat_id': chat_id,
         'content': content,
         'timestamp': formatted_timestamp,
-        'status': new_message.status
+        'status': new_message.status,
+        'message_id': new_message.id
     }, room=chat_id)
 
     # Emit an event to update the contact item for all users
@@ -98,6 +106,39 @@ def handle_join_chat(data):
     if user_uuid:
         join_room(chat_id)
         emit('user_connected', {'uuid': user_uuid}, room=chat_id)
+
+@socketio.on('create_group')
+def handle_create_group(data):
+    group_name = data['group_name']
+    usernames = data['usernames']
+
+    # Create the group chat
+    new_chat = Chat(name=group_name, type='group')
+    db.session.add(new_chat)
+    db.session.commit()
+
+    # Add the logged-in user as an admin
+    logged_in_user = User.query.filter_by(uuid=session['uuid']).first()
+    new_participant = ChatParticipant(chat_id=new_chat.id, user_id=logged_in_user.id, is_admin=True)
+    db.session.add(new_participant)
+
+    # Add other users to the group
+    for username in usernames:
+        user = User.query.filter_by(username=username).first()
+        if user:
+            new_participant = ChatParticipant(chat_id=new_chat.id, user_id=user.id)
+            db.session.add(new_participant)
+
+    db.session.commit()
+
+    # Notify users about the new group
+    for username in usernames:
+        user = User.query.filter_by(username=username).first()
+        if user:
+            emit('group_created', {'chat_id': new_chat.id, 'group_name': group_name}, room=user.uuid)
+
+    emit('group_created', {'chat_id': new_chat.id, 'group_name': group_name}, room=logged_in_user.uuid)
+
 
 if __name__ == '__main__':
     socketio.run(app)

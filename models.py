@@ -6,8 +6,8 @@ db = SQLAlchemy()
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    chat_id = db.Column(db.String(36), db.ForeignKey('chat.id'), nullable=False)  # Changed to use chat ID
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Nullable for group messages
+    chat_id = db.Column(db.Integer, db.ForeignKey('chat.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
     is_deleted = db.Column(db.Boolean, default=False)
@@ -32,11 +32,9 @@ class User(db.Model):
     status_message = db.Column(db.String(255), nullable=True)  # New field for user status message
     last_seen = db.Column(db.DateTime, nullable=True)  # New field for tracking last seen
 
-# Chat model (direct or group)
 class Chat(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user1_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    user2_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(80), nullable=True)  # New field for group chat name
     type = db.Column(db.String(20), default='direct')  # 'direct' or 'group'
     
     # Relationship to participants (users in the chat)
@@ -45,10 +43,10 @@ class Chat(db.Model):
     def get_participants(self):
         return [participant.user for participant in self.participants]
 
-# ChatParticipant model //TODO implement groupchat using this model
+# ChatParticipant model
 class ChatParticipant(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    chat_id = db.Column(db.String(36), db.ForeignKey('chat.id'), nullable=False)
+    chat_id = db.Column(db.Integer, db.ForeignKey('chat.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     joined_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     chat = db.relationship('Chat', back_populates='participants')

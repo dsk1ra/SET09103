@@ -35,13 +35,20 @@
                 <input type="text" id="search-contacts" placeholder="Search contacts...">
             </div>
             <div id="contact-list">
-                <!-- Contacts will be dynamically loaded here -->
+                <!-- Example chat items, dynamically generated -->
+                {% for chat in chats %}
+                <div class="chat-item" data-chat-id="{{ chat.id }}">
+                    {{ chat.name }}
+                </div>
+                {% endfor %}
             </div>
         </div>
+
         <!-- Chat Section -->
         <div class="chat-container">
             <div id="chat-header">
                 <span id="contact-name">Select a contact to chat</span>
+                <span id="chat-info"></span>
             </div>
             <div id="chat-messages">
                 <!-- Chat messages will be displayed here -->
@@ -62,6 +69,15 @@
         <button id="cancel-add-contact-btn">Cancel</button>
     </div>
 
+    <div id="create-group-popup" class="popup">
+        <h3>Create Group Chat</h3>
+        <input type="text" id="group-name" placeholder="Enter group name" />
+        <input type="text" id="group-user-username" placeholder="Enter username to add" />
+        <button id="add-user-to-group-btn">Add User</button>
+        <ul id="group-users-list"></ul>
+        <button id="confirm-create-group-btn">Create Group</button>
+        <button id="cancel-create-group-btn">Cancel</button>
+    </div>
     <div id="settings-overlay" class="overlay">
         <div class="overlay-content">
             <h2>Settings</h2>
@@ -81,36 +97,36 @@
     const loggedInUsername = "{{ username }}";
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
-    document.querySelector('#profile-picture-form').addEventListener('submit', function(event) {
+    document.querySelector('#profile-picture-form').addEventListener('submit', function (event) {
         event.preventDefault();
         const formData = new FormData(this);
         fetch('/api/v1/upload_profile_picture', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the profile picture for the user
-                document.querySelector('#profile-picture').src = `data:image/png;base64,${data.profile_picture}`;
-                document.querySelector('#profile-picture').style.display = 'block';
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the profile picture for the user
+                    document.querySelector('#profile-picture').src = `data:image/png;base64,${data.profile_picture}`;
+                    document.querySelector('#profile-picture').style.display = 'block';
 
-                // Broadcast the change to other users
-                socket.emit('update_profile_picture', {
-                    user_uuid: loggedInUserId,
-                    profile_picture: data.profile_picture
-                });
-            } else {
-                alert('Failed to upload profile picture.');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
+                    // Broadcast the change to other users
+                    socket.emit('update_profile_picture', {
+                        user_uuid: loggedInUserId,
+                        profile_picture: data.profile_picture
+                    });
+                } else {
+                    alert('Failed to upload profile picture.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
     });
 
     // Handle incoming WebSocket messages
-    socket.on('update_profile_picture', function(data) {
+    socket.on('update_profile_picture', function (data) {
         const { user_uuid, profile_picture } = data;
         const userPic = document.querySelector(`.profile-picture[data-user-id="${user_uuid}"]`);
         if (userPic) {
@@ -118,4 +134,5 @@
         }
     });
 </script>
+
 </html>

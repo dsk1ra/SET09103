@@ -1,12 +1,19 @@
+
 document.addEventListener("DOMContentLoaded", () => {
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
     const addContactBtn = document.getElementById('add-contact-btn');
+    const createGroupBtn = document.getElementById('create-group-btn');
     const logoutBtn = document.getElementById('logout-slide-btn');
     const sendBtn = document.getElementById('send-btn');
     const addContactPopup = document.getElementById('add-contact-popup');
+    const createGroupPopup = document.getElementById('create-group-popup');
     const confirmAddContactBtn = document.getElementById('confirm-add-contact-btn');
+    const confirmCreateGroupBtn = document.getElementById('confirm-create-group-btn');
     const cancelAddContactBtn = document.getElementById('cancel-add-contact-btn');
+    const cancelCreateGroupBtn = document.getElementById('cancel-create-group-btn');
+    const addUserToGroupBtn = document.getElementById('add-user-to-group-btn');
+    const groupUsersList = document.getElementById('group-users-list');
     const contactList = document.getElementById('contact-list');
     const chatMessages = document.getElementById('chat-messages');
     const messageInput = document.getElementById('message-input');
@@ -24,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let activeContactId = null;
     let activeContactName = null;
+    let groupUsers = [];
 
     messageInput.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
@@ -43,16 +51,45 @@ document.addEventListener("DOMContentLoaded", () => {
         this.style.height = Math.min(this.scrollHeight, 60) + 'px'; // Set height to scrollHeight, max 120px (3 rows)
     });
 
+    // Function to hide all overlays
+    function hideAllOverlays() {
+        addContactPopup.classList.remove('show');
+        createGroupPopup.classList.remove('show');
+    }
+
     // Show add contact popup
     addContactBtn.addEventListener("click", () => {
+        hideAllOverlays();
         addContactPopup.classList.add('show');
-        popupOverlay.classList.add('show');
     });
 
     // Hide add contact popup
     cancelAddContactBtn.addEventListener("click", () => {
         addContactPopup.classList.remove('show');
-        popupOverlay.classList.remove('show');
+    });
+
+    // Show create group popup
+    createGroupBtn.addEventListener("click", () => {
+        hideAllOverlays();
+        createGroupPopup.classList.add('show');
+    });
+
+    // Hide create group popup
+    cancelCreateGroupBtn.addEventListener("click", () => {
+        createGroupPopup.classList.remove('show');
+        groupUsers = [];
+        groupUsersList.innerHTML = '';
+    });
+
+    addUserToGroupBtn.addEventListener("click", () => {
+        const username = document.getElementById('group-user-username').value.trim();
+        if (username && !groupUsers.includes(username)) {
+            groupUsers.push(username);
+            const listItem = document.createElement('li');
+            listItem.innerText = username;
+            groupUsersList.appendChild(listItem);
+            document.getElementById('group-user-username').value = '';
+        }
     });
 
     // Confirm add contact
@@ -69,13 +106,66 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (data.success) {
                         fetchContacts(); // Refresh contact list
                         addContactPopup.classList.remove('show');
-                        popupOverlay.classList.remove('show');
                     } else {
                         alert(data.message);
                     }
                 })
                 .catch(err => console.error("Error adding contact:", err));
         }
+    });
+
+    // Confirm create group
+    confirmCreateGroupBtn.addEventListener("click", () => {
+        const groupName = document.getElementById('group-name').value.trim();
+        if (groupName && groupUsers.length > 0) {
+            fetch('/api/v1/group_chats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: groupName, users: groupUsers })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        fetchContacts(); // Refresh contact list
+                        createGroupPopup.classList.remove('show');
+                        groupUsers = [];
+                        groupUsersList.innerHTML = '';
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(err => console.error("Error creating group chat:", err));
+        }
+    });
+
+    const chatInfo = document.getElementById('chat-info');
+
+    function updateChatHeader(chat) {
+        if (chat.type === 'group') {
+            contactName.innerText = chat.name;
+            chatInfo.innerText = 'Group Chat';
+        } else {
+            contactName.innerText = chat.name;
+            chatInfo.innerText = '';
+        }
+    }
+
+    function selectChat(chatId) {
+        fetch(`/api/v1/chats/${chatId}`)
+            .then(response => response.json())
+            .then(chat => {
+                updateChatHeader(chat);
+                // Load chat messages and other logic
+            })
+            .catch(err => console.error("Error fetching chat:", err));
+    }
+
+    // Add event listeners to chat elements
+    document.querySelectorAll('.chat-info').forEach(item => {
+        item.addEventListener('click', () => {
+            const chatId = item.getAttribute('data-chat-id');
+            selectChat(chatId);
+        });
     });
 
     // Update contact list
@@ -178,9 +268,9 @@ document.addEventListener("DOMContentLoaded", () => {
             newContactItem.dataset.chatId = data.chat_id;
 
             const chatInfo = `
-                <h4>${data.chat_name}</h4>
-                <h5>${data.latest_message}</h5>
-            `;
+            <h4>${data.chat_name}</h4>
+            <h5>${data.latest_message}</h5>
+        `;
             newContactItem.innerHTML = chatInfo;
 
             contactList.prepend(newContactItem);
@@ -193,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Load chat messages
-    function loadChat(contactId, contactUsername) {
+    function loadChat(contactId, contactUsername, chatType) {
         activeContactId = contactId;
         activeContactName = contactUsername;
 
@@ -208,11 +298,10 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    data.messages.forEach(msg => {
-                        displayMessage(msg.content, msg.sender_id === loggedInUserId ? "self" : "other", msg.timestamp, msg.status, msg.id);
+                    data.messages.forEach(message => {
+                        const senderType = message.sender_id === loggedInUserId ? 'self' : 'other';
+                        displayMessage(message.content, senderType, message.timestamp, message.status, message.id);
                     });
-                } else {
-                    console.error("Error loading messages:", data.message);
                 }
             })
             .catch(err => console.error("Error fetching messages:", err));
@@ -259,25 +348,29 @@ document.addEventListener("DOMContentLoaded", () => {
     sendBtn.addEventListener("click", () => {
         const message = messageInput.value.trim();
         if (message && activeContactId) {
-            // Emit the message to the server to broadcast to all users
+            fetch('/api/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: activeContactId,
+                    sender_id: loggedInUserId,
+                    content: message
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayMessage(data.content, 'self', data.timestamp, data.status, data.id);
+                        messageInput.value = '';
+                        messageInput.style.height = 'auto'; // Reset height
+                    }
+                })
+                .catch(err => console.error("Error sending message:", err));
             socket.emit('send_message', {
                 chat_id: activeContactId,
-                content: message,
-                sender_id: loggedInUserId,  // Your user ID
-                receiver_id: activeContactId  // Assuming activeContactId is the ID of the user you are chatting with
+                sender_id: loggedInUserId,
+                content: message
             });
-
-            // Display the message immediately (optimistic UI update)
-            displayMessage(message, "self", new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), "sent");
-
-            // Emit an event to update the contact list for all users
-            socket.emit('update_contact_list', {
-                chat_id: activeContactId,
-                latest_message: message,
-                chat_name: activeContactName
-            });
-
-            messageInput.value = '';
         }
     });
 
@@ -305,13 +398,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.chat_id === activeContactId) {
             if (data.sender_id !== loggedInUserId) { // Only display if it's not from the current user
                 displayMessage(data.content, "other", data.timestamp, data.status, data.message_id);
+            } else {
+                displayMessage(data.content, "self", data.timestamp, data.status, data.message_id);
             }
         }
 
         // Update the contact item for all users
         const contactList = document.getElementById('contact-list');
         const contactItems = contactList.getElementsByClassName('contact-item');
-
 
         // Loop through contact items to find the one that matches the chat_id
         for (let contactItem of contactItems) {
@@ -322,6 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 break;
             }
         }
+        messageInput.value = '';
     });
 
     // Logout functionality
@@ -354,6 +449,44 @@ document.addEventListener("DOMContentLoaded", () => {
     // Load contacts on page load
     fetchContacts();
 
+    // Show create group popup
+    createGroupBtn.addEventListener("click", () => {
+        hideAllOverlays();
+        createGroupPopup.classList.add('show');
+    });
+
+    // Hide create group popup
+    cancelCreateGroupBtn.addEventListener("click", () => {
+        createGroupPopup.classList.remove('show');
+        groupUsers = [];
+        groupUsersList.innerHTML = '';
+    });
+
+
+    // Confirm create group
+    confirmCreateGroupBtn.addEventListener("click", () => {
+        const groupName = document.getElementById('group-name').value.trim();
+        if (groupName && groupUsers.length > 0) {
+            fetch('/api/v1/create_group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ group_name: groupName, usernames: groupUsers })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        fetchContacts(); // Refresh contact list
+                        createGroupPopup.classList.remove('show');
+                        groupUsers = [];
+                        groupUsersList.innerHTML = '';
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(err => console.error("Error creating group:", err));
+        }
+    });
+
     const settingsBtn = document.getElementById('settings-btn');
     const settingsOverlay = document.getElementById('settings-overlay');
     const closeSettingsBtn = document.getElementById('close-settings-btn');
@@ -368,7 +501,16 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSettingsBtn.addEventListener('click', () => {
         settingsOverlay.style.display = 'none';
     });
-
+    function appendMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+        messageElement.innerHTML = `
+            <div class="message-content">${message.content}</div>
+            <div class="message-timestamp">${message.timestamp}</div>
+        `;
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
+    }
     profilePictureForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const file = profilePictureInput.files[0];
@@ -464,7 +606,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    
+
 });
 
 $(document).ready(function () {

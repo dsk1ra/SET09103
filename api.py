@@ -5,7 +5,6 @@ import uuid
 from models import db, Message, User, Chat, ChatParticipant, BlockedUser, Notification
 import base64
 
-
 api = Blueprint('api', __name__, url_prefix='/api/v1')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -94,14 +93,13 @@ def add_contact():
         return jsonify({'success': False, 'message': 'You cannot add yourself as a contact.'})
 
     existing_chat = Chat.query.filter(
-        ((Chat.user1_id == logged_in_user.id) & (Chat.user2_id == contact_user.id)) |
-        ((Chat.user1_id == contact_user.id) & (Chat.user2_id == logged_in_user.id))
+        ((Chat.participants.any(user_id=logged_in_user.id)) & (Chat.participants.any(user_id=contact_user.id)) & (Chat.type == 'direct'))
     ).first()
 
     if existing_chat:
         return jsonify({'success': False, 'message': 'This user is already your contact.'})
 
-    new_chat = Chat(user1_id=logged_in_user.id, user2_id=contact_user.id, type='direct')
+    new_chat = Chat(type='direct')
     db.session.add(new_chat)
     db.session.commit()
 
@@ -145,7 +143,7 @@ def get_contacts():
         if other_user:
             contact_details.append({
                 'chat_id': chat.id,
-                'chat_name': other_user.username,
+                'chat_name': other_user.username if chat.type == 'direct' else chat.name,
                 'latest_message': latest_message.content if latest_message else None,
                 'latest_message_timestamp': latest_message.timestamp.strftime('%H:%M') if latest_message else None,  # Add timestamp
                 'profile_picture': base64.b64encode(other_user.profile_picture).decode('utf-8') if other_user.profile_picture else None  # Add profile picture
@@ -158,8 +156,14 @@ def send_message():
     data = request.get_json()
     chat_id = data['chat_id']
     sender_id = data['sender_id']
-    receiver_id = data['receiver_id']
     content = data['content']
+
+    # Determine if the chat is a group chat
+    chat = Chat.query.get(chat_id)
+    if chat.type == 'group':
+        receiver_id = None  # No specific receiver for group messages
+    else:
+        receiver_id = data.get('receiver_id')  # Use .get() to avoid KeyError
 
     # Create and save the message
     new_message = Message(
@@ -191,6 +195,9 @@ def mark_message_as_read():
 
     if not user_uuid:
         return jsonify({'success': False, 'message': 'User not logged in.'})
+
+    if not message_id:
+        return jsonify({'success': False, 'message': 'Message ID is required.'})
 
     message = Message.query.get(message_id)
     if not message:
@@ -242,3 +249,36 @@ def get_profile_picture():
         return jsonify({'success': True, 'profile_picture': image_data})
     else:
         return jsonify({'success': False, 'message': 'No profile picture found.'})
+    
+@api.route('/create_group', methods=['POST'])
+def create_group():
+    data = request.get_json()
+    group_name = data.get('group_name')
+    usernames = data.get('usernames')
+
+    if 'username' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in.'})
+
+    logged_in_user = User.query.filter_by(username=session['username']).first()
+    if not logged_in_user:
+        return jsonify({'success': False, 'message': 'User not found.'})
+
+    # Create the group chat
+    new_chat = Chat(name=group_name, type='group')
+    db.session.add(new_chat)
+    db.session.commit()
+
+    # Add the logged-in user as an admin
+    new_participant = ChatParticipant(chat_id=new_chat.id, user_id=logged_in_user.id, is_admin=True)
+    db.session.add(new_participant)
+
+    # Add other users to the group
+    for username in usernames:
+        user = User.query.filter_by(username=username).first()
+        if user:
+            new_participant = ChatParticipant(chat_id=new_chat.id, user_id=user.id)
+            db.session.add(new_participant)
+
+    db.session.commit()
+
+    return jsonify({'success': True, 'chat_id': new_chat.id, 'message': 'Group created successfully.'})
