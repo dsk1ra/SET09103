@@ -31,13 +31,13 @@ def get_messages(chat_id):
 
     return jsonify({'success': True, 'messages': messages_data})
 
-def register_user(username, password, email=None):
+def register_user(username, email, name, surname, password):
     if User.query.filter_by(username=username).first():
         return False  # Check if username already exists
     
     user_uuid = str(uuid.uuid4())  # Generate a new UUID
     hashed_password = generate_password_hash(password)  # Hash the password
-    new_user = User(username=username, uuid=user_uuid, password=hashed_password, email=email) # Populate new user with data
+    new_user = User(username=username, uuid=user_uuid, email=email, name=name, surname=surname, password=hashed_password)  # Populate new user with data
     
     db.session.add(new_user)
     db.session.commit()  # Save the new user to the database
@@ -47,10 +47,12 @@ def register_user(username, password, email=None):
 def register():
     data = request.get_json()
     username = data.get('username')
-    password = data.get('password')
     email = data.get('email')
+    name = data.get('name')
+    surname = data.get('surname')
+    password = data.get('password')
     
-    if register_user(username, password, email):
+    if register_user(username, email, name, surname, password):
         return jsonify({'success': True, 'username': username})
     else:
         return jsonify({'success': False, 'message': 'Username already exists.'})
@@ -145,7 +147,8 @@ def get_contacts():
                 'chat_id': chat.id,
                 'chat_name': other_user.username,
                 'latest_message': latest_message.content if latest_message else None,
-                'latest_message_timestamp': latest_message.timestamp.strftime('%H:%M') if latest_message else None  # Add timestamp
+                'latest_message_timestamp': latest_message.timestamp.strftime('%H:%M') if latest_message else None,  # Add timestamp
+                'profile_picture': base64.b64encode(other_user.profile_picture).decode('utf-8') if other_user.profile_picture else None  # Add profile picture
             })
 
     return jsonify({'success': True, 'contacts': contact_details})
@@ -179,6 +182,28 @@ def send_message():
         'timestamp': formatted_timestamp,
         'status': new_message.status
     })
+    
+@api.route('/messages/read', methods=['POST'])
+def mark_message_as_read():
+    data = request.get_json()
+    message_id = data.get('message_id')
+    user_uuid = session.get('uuid')
+
+    if not user_uuid:
+        return jsonify({'success': False, 'message': 'User not logged in.'})
+
+    message = Message.query.get(message_id)
+    if not message:
+        return jsonify({'success': False, 'message': 'Message not found.'})
+
+    if message.receiver_id != User.query.filter_by(uuid=user_uuid).first().id:
+        return jsonify({'success': False, 'message': 'Unauthorized access.'})
+
+    message.status = 'read'
+    message.read_at = db.func.current_timestamp()
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Message marked as read.'})
     
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

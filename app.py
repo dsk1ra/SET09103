@@ -32,7 +32,7 @@ def chats():
         user_uuid = session.get('uuid')
         user = User.query.filter_by(uuid=user_uuid).first()
         if user:
-            return render_template("chats.html", user_uuid=user_uuid, username=user.username)
+            return render_template("chats.html", user_uuid=user_uuid, username=user.username, name=user.name, surname=user.surname)
     return redirect(url_for('index'))
 
 @socketio.on('connect')

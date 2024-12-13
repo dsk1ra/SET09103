@@ -24,6 +24,8 @@ class User(db.Model):
     uuid = db.Column(db.String(36), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(80), nullable=False)  # New field for name
+    surname = db.Column(db.String(80), nullable=False)  # New field for surname
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, onupdate=db.func.current_timestamp())
     profile_picture = db.Column(db.LargeBinary, nullable=True)  # Store image data as binary

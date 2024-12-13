@@ -1,10 +1,8 @@
-
-
 document.addEventListener("DOMContentLoaded", () => {
     const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
     const addContactBtn = document.getElementById('add-contact-btn');
-    const logoutBtn = document.getElementById('logout-btn');
+    const logoutBtn = document.getElementById('logout-slide-btn');
     const sendBtn = document.getElementById('send-btn');
     const addContactPopup = document.getElementById('add-contact-popup');
     const confirmAddContactBtn = document.getElementById('confirm-add-contact-btn');
@@ -13,13 +11,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatMessages = document.getElementById('chat-messages');
     const messageInput = document.getElementById('message-input');
     const contactName = document.getElementById('contact-name');
+    const popupOverlay = document.getElementById('popup-overlay');
 
     // Toggle slide menu functionality
     const slideMenu = document.querySelector('.slide-menu');
-    const container = document.querySelector('.container');
-    const overlay = document.getElementById('menu-overlay');
     const toggleButton = document.getElementById('toggle-slide-menu');
-
+    const closeButton = document.getElementById('close-slide-menu');
+    const container = document.querySelector('.container');
 
     const usernameSpan = document.getElementById('username');
     usernameSpan.innerText = loggedInUsername;
@@ -47,12 +45,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Show add contact popup
     addContactBtn.addEventListener("click", () => {
-        addContactPopup.style.display = "block";
+        addContactPopup.classList.add('show');
+        popupOverlay.classList.add('show');
     });
 
     // Hide add contact popup
     cancelAddContactBtn.addEventListener("click", () => {
-        addContactPopup.style.display = "none";
+        addContactPopup.classList.remove('show');
+        popupOverlay.classList.remove('show');
     });
 
     // Confirm add contact
@@ -68,7 +68,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then(data => {
                     if (data.success) {
                         fetchContacts(); // Refresh contact list
-                        addContactPopup.style.display = "none"; // Close popup
+                        addContactPopup.classList.remove('show');
+                        popupOverlay.classList.remove('show');
                     } else {
                         alert(data.message);
                     }
@@ -92,6 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateContactList(contacts) {
+        const contactList = document.getElementById('contact-list');
         contactList.innerHTML = ''; // Clear existing list
         contacts.forEach(contact => {
             const contactItem = document.createElement('div');
@@ -101,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Add profile picture
             const profilePicture = document.createElement('img');
             profilePicture.classList.add('profile-picture');
-            profilePicture.src = contact.profile_picture || 'default-profile.png';
+            profilePicture.src = contact.profile_picture ? `data:image/png;base64,${contact.profile_picture}` : 'static/images/placeholder.png';
             profilePicture.alt = 'Profile Picture';
             profilePicture.width = 20;
             profilePicture.height = 20;
@@ -207,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(data => {
                 if (data.success) {
                     data.messages.forEach(msg => {
-                        displayMessage(msg.content, msg.sender_id === loggedInUserId ? "self" : "other", msg.timestamp, msg.status);
+                        displayMessage(msg.content, msg.sender_id === loggedInUserId ? "self" : "other", msg.timestamp, msg.status, msg.id);
                     });
                 } else {
                     console.error("Error loading messages:", data.message);
@@ -217,9 +219,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Display a single message in the chat
-    function displayMessage(message, senderType, timestamp, status) {
+    function displayMessage(message, senderType, timestamp, status, messageId) {
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', senderType === "self" ? 'self-message' : 'other-message');
+        messageDiv.id = `message-${messageId}`;
 
         const timestampDiv = document.createElement('span');
         timestampDiv.classList.add('timestamp');
@@ -232,6 +235,24 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.innerHTML = `${message} <div>${timestampDiv.outerHTML} ${statusDiv.outerHTML}</div>`;
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to the latest message
+
+        // Mark message as read if it's from the other user
+        if (senderType === "other" && status !== "read") {
+            fetch('/api/v1/messages/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message_id: messageId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        statusDiv.innerText = 'read';
+                        // Emit status update to WebSocket server
+                        socket.emit('status_update', { messageId: messageId, status: 'read' });
+                    }
+                })
+                .catch(err => console.error("Error marking message as read:", err));
+        }
     }
 
     // Send message
@@ -283,13 +304,14 @@ document.addEventListener("DOMContentLoaded", () => {
         // Display the message if it's from the active contact
         if (data.chat_id === activeContactId) {
             if (data.sender_id !== loggedInUserId) { // Only display if it's not from the current user
-                displayMessage(data.content, "other", data.timestamp, data.status);
+                displayMessage(data.content, "other", data.timestamp, data.status, data.message_id);
             }
         }
 
         // Update the contact item for all users
         const contactList = document.getElementById('contact-list');
         const contactItems = contactList.getElementsByClassName('contact-item');
+
 
         // Loop through contact items to find the one that matches the chat_id
         for (let contactItem of contactItems) {
@@ -319,7 +341,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // Toggle slide menu
     toggleButton.addEventListener('click', () => {
         const isActive = slideMenu.classList.contains('active');
-        slideMenu.classList.toggle('active', !isActive); // Toggle menu
+        slideMenu.classList.toggle('active', !isActive);
+        //container.classList.toggle('blur', !isActive);
+    });
+
+    // Close slide menu
+    closeButton.addEventListener('click', () => {
+        slideMenu.classList.remove('active');
+        //container.classList.remove('blur');
     });
 
     // Load contacts on page load
@@ -380,19 +409,62 @@ document.addEventListener("DOMContentLoaded", () => {
         fetch('/api/v1/profile_picture')
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    const profilePicture = document.getElementById('profile-picture');
+                const profilePicture = document.getElementById('profile-picture');
+                if (data.success && data.profile_picture) {
                     profilePicture.src = `data:image/png;base64,${data.profile_picture}`;
                 } else {
-                    console.error('Error fetching profile picture:', data.message);
+                    profilePicture.src = 'static/images/placeholder.png'; // Default profile picture
                 }
             })
-            .catch(err => console.error('Error fetching profile picture:', err));
+            .catch(err => {
+                console.error('Error fetching profile picture:', err);
+                const profilePicture = document.getElementById('profile-picture');
+                profilePicture.src = 'static/images/placeholder.png'; // Default profile picture on error
+            });
     }
 
     // Call the function to fetch the profile picture on page load
     fetchProfilePicture();
 
+    const searchContactsInput = document.getElementById('search-contacts');
+
+    // Filter contacts based on search input
+    searchContactsInput.addEventListener('input', function () {
+        const searchTerm = this.value.toLowerCase();
+        const contactItems = document.querySelectorAll('.contact-item');
+
+        contactItems.forEach(contactItem => {
+            const contactName = contactItem.querySelector('h4').innerText.toLowerCase();
+            if (contactName.includes(searchTerm)) {
+                contactItem.style.display = 'flex'; // Show matching contact
+            } else {
+                contactItem.style.display = 'none'; // Hide non-matching contact
+            }
+        });
+    });
+    const customFileUploadLabel = document.querySelector('.custom-file-upload');
+
+    customFileUploadLabel.addEventListener('click', () => {
+        profilePictureInput();
+    });
+    const profilePicturePreview = document.getElementById('profile-picture-preview');
+
+    profilePictureInput.addEventListener('change', () => {
+        const file = profilePictureInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                profilePicturePreview.src = e.target.result;
+                profilePicturePreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            profilePicturePreview.src = '';
+            profilePicturePreview.style.display = 'none';
+        }
+    });
+
+    
 });
 
 $(document).ready(function () {

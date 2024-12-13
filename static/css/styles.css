@@ -44,22 +44,37 @@ body {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
+    gap: 10px;
+    /* Add gap between elements */
 }
 
-#add-contact-btn {
-    background-color: #6e8efb;
-    color: white;
-    /*padding: 12px;*/
-    border-radius: 4px;
-    cursor: pointer;
-    border: none;
-    /*margin-bottom: 20px;*/
-    transition: background-color 0.3s;
-    width: -webkit-fill-available;
+#search-contacts {
+    padding: 8px 12px;
+    /* Add padding for better appearance */
+    border-radius: 20px;
+    /* Rounded corners */
+    border: 1px solid #ddd;
+    font-size: 1em;
+    flex-grow: 1;
+    max-width: calc(100% - 50px);
+    /* Prevent overflow */
+    background-color: #fff;
+    /* White background */
+    color: #333;
+    /* Dark text color */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    /* Subtle shadow */
+    transition: border-color 0.3s, box-shadow 0.3s;
+    /* Smooth transition */
 }
 
-#add-contact-btn:hover {
-    background-color: #5a7ce0;
+#search-contacts:focus {
+    border-color: #6e8efb;
+    /* Highlight border on focus */
+    box-shadow: 0 2px 8px #6e8efb4d;
+    /* Enhanced shadow on focus */
+    outline: none;
+    /* Remove default outline */
 }
 
 #contact-list {
@@ -67,20 +82,65 @@ body {
     overflow-y: auto;
 }
 
+/* Contact Item */
 .contact-item {
-    padding: 12px;
+    display: flex;
+    align-items: center;
+    padding: 8px;
     margin-bottom: 10px;
     background-color: #444;
     color: #ddd;
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    display: flex;
 }
 
 .contact-item:hover {
     background-color: #6e8efb;
     color: white;
+}
+
+/* Profile Picture */
+.profile-picture {
+    width: 50px;
+    /* Increased size for better visibility */
+    height: 50px;
+    /* Increased size for better visibility */
+    border-radius: 50%;
+    margin-right: 15px;
+    /* Space between picture and text */
+    object-fit: cover;
+    /* Ensure the image covers the area */
+}
+
+/* Chat Info */
+.chat-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-grow: 1;
+}
+
+.chat-info h4 {
+    margin: 0;
+    font-size: 1.1em;
+    color: white;
+    /* Ensure the text is visible */
+}
+
+.chat-info h5 {
+    margin: 5px 0 0 0;
+    font-size: 0.9em;
+    color: #ccc;
+    /* Slightly lighter color for the latest message */
+}
+
+.chat-info .timestamp {
+    font-size: 0.8em;
+    color: #aaa;
+    /* Even lighter color for the timestamp */
+    align-self: flex-end;
+    /* Align timestamp to the right */
 }
 
 /* Chat container */
@@ -91,6 +151,7 @@ body {
     background-color: #f9f9f9;
     border-top-right-radius: 8px;
     border-bottom-right-radius: 8px;
+    overflow: hidden;
 }
 
 #chat-header {
@@ -109,6 +170,7 @@ body {
 }
 
 #chat-messages {
+    width: 100%;
     flex-grow: 1;
     padding: 15px;
     background-color: #fff;
@@ -116,13 +178,13 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: calc(100% - 120px);
 }
 
 .message {
     padding: 10px 15px;
     border-radius: 8px;
-    max-width: 10%;
-    /* Changed from 50% to 80% */
+    max-width: 80%;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
@@ -158,7 +220,10 @@ body {
     font-size: 1em;
     outline: none;
     resize: none;
-
+    max-height: 60px;
+    /* Limit the height of the input */
+    overflow-y: auto;
+    /* Enable vertical scrolling */
 }
 
 #message-input textarea {
@@ -172,6 +237,11 @@ body {
     max-height: 60px;
     overflow-y: hidden;
     resize: none;
+}
+
+.read {
+    font-weight: normal;
+    color: gray;
 }
 
 #send-btn,
@@ -203,11 +273,20 @@ body {
     width: 300px;
     display: none;
     z-index: 10;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+}
+
+#add-contact-popup.show {
+    display: block;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
 }
 
 #add-contact-popup h3 {
     margin-bottom: 10px;
     color: #333;
+    text-align: center;
 }
 
 #add-contact-popup input {
@@ -228,25 +307,40 @@ body {
     font-size: 1em;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    margin-top: 10px;
 }
 
 #add-contact-popup button:hover {
     background-color: #5a7ce0;
 }
 
-/* Error message */
-#popup-add-contact-error {
-    color: red;
-    font-size: 0.9em;
-    margin-top: 10px;
+/* Backdrop overlay */
+#popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9;
+}
+
+#popup-overlay.show {
+    display: block;
 }
 
 .container {
     position: relative;
+    display: flex;
+    width: 100%;
+    max-width: 1200px;
+    height: 90vh;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     overflow: hidden;
-    /* Prevent slide menu from overflowing outside */
     transition: filter 0.3s ease;
-    /* Smooth blur effect */
 }
 
 /* Blur effect */
@@ -274,25 +368,99 @@ body {
     /* Above sidebar */
 }
 
-.sidebar button {
-    background-color: #333;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.3s;
+/* Active state for sliding menu */
+.slide-menu.active {
+    left: 0;
+    /* Slide in from the left side of the container */
 }
 
-.sidebar button:hover {
-    background-color: #555;
+/* Slide Menu Header */
+.slide-menu-header {
+    position: relative;
+    /* To position the close button within the header */
+    text-align: center;
+    padding: 20px;
+    background-color: #444;
+    border-bottom: 1px solid #555;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#profile-picture {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+    object-fit: cover;
+    /* Ensure the image covers the area */
+}
+
+#name-surname {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: white;
+    /* Ensure the text is visible */
+}
+
+#username {
+    font-size: 1em;
+    color: #ccc;
+    /* Slightly lighter color for the username */
+    margin-bottom: 5px;
+    /* Space between username and other elements */
+}
+
+/* Close Button for Slide Menu */
+.close-slide-menu {
+    background-color: #6e8efb;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2em;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 3;
+}
+
+.close-slide-menu:hover {
+    background-color: #5a7ce0;
+}
+
+.close-slide-menu:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.5);
+}
+
+/* Sliding Menu */
+.slide-menu {
+    position: absolute;
+    top: 0;
+    left: -250px;
+    width: 250px;
+    height: 100%;
+    background-color: #333;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    transition: left 0.3s ease;
+    z-index: 2;
+    padding: 20px;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 /* Active state for sliding menu */
 .slide-menu.active {
     left: 0;
-    /* Slide in from the left side of the container */
 }
 
 /* Slide Menu Sections */
@@ -301,13 +469,13 @@ body {
     padding: 20px;
     background-color: #444;
     border-bottom: 1px solid #555;
+    margin-bottom: 20px;
 }
 
 #profile-picture {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    /* Circular profile picture */
     margin-bottom: 10px;
 }
 
@@ -322,13 +490,11 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 15px;
-    /* Space between buttons */
 }
 
 .slide-menu-body button {
-    width: 80%;
+    width: 100%;
     padding: 12px;
     background-color: #555;
     color: white;
@@ -344,15 +510,9 @@ body {
 }
 
 /* Footer Section */
-.slide-menu-footer {
-    text-align: center;
-    padding: 20px;
-    background-color: #444;
-    border-top: 1px solid #555;
-}
 
 .slide-menu-footer button {
-    width: 80%;
+    width: 100%;
     padding: 12px;
     background-color: #d9534f;
     color: white;
@@ -369,9 +529,6 @@ body {
 
 /* Toggle Button */
 #toggle-slide-menu {
-    /*position: absolute;
-    top: 15px;
-    left: 15px;*/
     background-color: #6e8efb;
     color: white;
     border: none;
@@ -379,8 +536,23 @@ body {
     border-radius: 50%;
     cursor: pointer;
     font-size: 1.2em;
-    z-index: 2;
-    /* Above the menu */
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+}
+
+#toggle-slide-menu:hover {
+    background-color: #5a7ce0;
+}
+
+#toggle-slide-menu:focus {
+    outline: none;
+    /* Remove default outline */
+    box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.5);
+    /* Custom focus outline */
 }
 
 .top-sidebar-navigation {
@@ -391,11 +563,6 @@ body {
 .slide-menu.active {
     left: 0;
     /* Brings the menu into view */
-}
-
-#toggle-slide-menu {
-    margin-right: 10px;
-    /* Space between the two buttons */
 }
 
 .sidebar button:hover {
@@ -504,10 +671,101 @@ body {
     padding: 20px;
     border-radius: 8px;
     text-align: center;
+    width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.overlay-content h2 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+#profile-picture-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#profile-picture-form button {
+    padding: 10px 20px;
+    background-color: #6e8efb;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#profile-picture-form button:hover {
+    background-color: #5a7ce0;
+}
+
+#close-settings-btn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#close-settings-btn:hover {
+    background-color: #c9302c;
 }
 
 #profile-picture-input {
-    margin: 10px 0;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    font-size: 1em;
+    color: #333;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#profile-picture-input:hover {
+    border-color: #6e8efb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#profile-picture-input:focus {
+    border-color: #6e8efb;
+    box-shadow: 0 2px 8px rgba(110, 142, 251, 0.5);
+    outline: none;
+}
+
+#settings-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+#settings-overlay.show {
+    display: flex;
+}
+
+.custom-file-upload {
+    display: inline-block;
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: #6e8efb;
+    color: white;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.custom-file-upload:hover {
+    background-color: #5a7ce0;
 }
 
 /* Responsive Layout */

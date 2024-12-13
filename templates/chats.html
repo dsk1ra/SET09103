@@ -12,15 +12,16 @@
 </head>
 
 <body>
-    <!--  <div id="menu-overlay"></div>   -->
     <div class="container">
         <div class="slide-menu">
+            <button id="close-slide-menu" class="close-slide-menu">←</button>
             <div class="slide-menu-header">
                 <img src="profile-picture.jpg" alt="Profile Picture" id="profile-picture">
+                <span id="name-surname">{{ name }} {{ surname }}</span>
                 <span id="username">{{ username }}</span>
             </div>
             <div class="slide-menu-body">
-                <button id="add-contact-slide">Add Contact</button>
+                <button id="add-contact-btn">Add Contact</button>
                 <button id="create-group-btn">Create Group</button>
                 <button id="settings-btn">Settings</button>
             </div>
@@ -28,11 +29,10 @@
                 <button id="logout-slide-btn">Log Out</button>
             </div>
         </div>
-        <!-- Sidebar Section -->
         <div class="sidebar">
             <div class="bar">
                 <button id="toggle-slide-menu">☰</button>
-                <button id="add-contact-btn">Add Contact</button>
+                <input type="text" id="search-contacts" placeholder="Search contacts...">
             </div>
             <div id="contact-list">
                 <!-- Contacts will be dynamically loaded here -->
@@ -42,7 +42,6 @@
         <div class="chat-container">
             <div id="chat-header">
                 <span id="contact-name">Select a contact to chat</span>
-                <button id="logout-btn">Logout</button>
             </div>
             <div id="chat-messages">
                 <!-- Chat messages will be displayed here -->
@@ -53,6 +52,8 @@
             </div>
         </div>
     </div>
+
+    <div id="popup-overlay"></div> <!-- Backdrop overlay -->
 
     <div id="add-contact-popup" class="popup">
         <h3>Add Contact</h3>
@@ -65,8 +66,10 @@
         <div class="overlay-content">
             <h2>Settings</h2>
             <form id="profile-picture-form">
-                <label for="profile-picture-input">Upload Profile Picture (Max 1MB):</label>
-                <input type="file" id="profile-picture-input" accept="image/*">
+                <label for="profile-picture-input" class="custom-file-upload">Upload Profile Picture (Max 1MB)</label>
+                <input type="file" id="profile-picture-input" accept="image/*" style="display: none;">
+                <img id="profile-picture-preview" src="" alt="Profile Picture Preview"
+                    style="display: none; width: 100px; height: 100px; border-radius: 50%; margin-top: 10px;">
                 <button type="submit">Upload</button>
             </form>
             <button id="close-settings-btn">Close</button>
@@ -76,6 +79,43 @@
 <script>
     const loggedInUserId = "{{ user_uuid }}";
     const loggedInUsername = "{{ username }}";
-</script>
+    const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 
+    document.querySelector('#profile-picture-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        fetch('/api/v1/upload_profile_picture', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the profile picture for the user
+                document.querySelector('#profile-picture').src = `data:image/png;base64,${data.profile_picture}`;
+                document.querySelector('#profile-picture').style.display = 'block';
+
+                // Broadcast the change to other users
+                socket.emit('update_profile_picture', {
+                    user_uuid: loggedInUserId,
+                    profile_picture: data.profile_picture
+                });
+            } else {
+                alert('Failed to upload profile picture.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+
+    // Handle incoming WebSocket messages
+    socket.on('update_profile_picture', function(data) {
+        const { user_uuid, profile_picture } = data;
+        const userPic = document.querySelector(`.profile-picture[data-user-id="${user_uuid}"]`);
+        if (userPic) {
+            userPic.src = `data:image/png;base64,${profile_picture}`;
+        }
+    });
+</script>
 </html>
